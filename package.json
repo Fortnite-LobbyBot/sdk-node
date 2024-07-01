@@ -4,7 +4,7 @@
 	"description": "Fortnite LobbyBot Framework",
 	"type": "module",
 	"scripts": {
-		"build": "bun build --target=node --minify --outfile=./dist/index.js ./src/index.ts",
+		"build": "bun run src/build.ts",
 		"test": "bun run test/index.ts",
 		"lint": "bun run lint:biome && bun run lint:tsc",
 		"lint:biome": "bunx --bun @biomejs/biome check --write .",

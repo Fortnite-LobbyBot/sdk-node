@@ -4,6 +4,12 @@ import { Util } from './Util';
 import { fork } from 'node:child_process';
 import type { FNLBConfig } from '../types/FNLBConfig';
 
+const defaultEnv = {
+    GATEWAY_URL: 'https://gateway.fnlb.net',
+    CDN_URL: 'https://cdn.fnlb.net',
+    ENIGMA_URL: 'https://void.fnlb.net'
+}
+
 export default class FNLB {
     private isLoaded = false
 
@@ -16,7 +22,7 @@ export default class FNLB {
         const response = await fetch(releaseURL);
 
         if (!response.ok)
-            throw new Error(`Failed to check for updates, status code: ${response.status}`);
+            throw new Error(`[FNLB ShardingManager] Failed to check for updates, status code: ${response.status}`);
 
         const data = (await response.json()) as { hash: string; url: string; version: string };
 
@@ -25,7 +31,7 @@ export default class FNLB {
         const downloadResponse = await fetch(downloadURL);
 
         if (!downloadResponse.ok)
-            throw new Error(`Failed to download update, status code: ${downloadResponse.status}`);
+            throw new Error(`[FNLB ShardingManager] Failed to download update, status code: ${downloadResponse.status}`);
 
         const release = await downloadResponse.text();
 
@@ -46,7 +52,7 @@ export default class FNLB {
         for (let i = 0; i < numberOfShards; i++) {
             const date = new Date();
 
-            processes.push(this.startShard(
+            processes.push(this.startShard(config,
                 `${i.toString().padStart(2, '0')}/${date.getDay()}${date.getHours()}${date.getMinutes()}${date.getSeconds()}`
             ));
         }
@@ -54,16 +60,25 @@ export default class FNLB {
         return processes
     }
 
-    public async startShard(id: string) {
+    public async startShard(config: FNLBConfig, id: string) {
         await this.update()
+
+        if (!config?.token) throw new Error('[FNLB ShardingManager] Please provide a FNLB token.')
 
         console.log('[FNLB ShardingManager] Starting shard with id:', id)
 
         const ps = fork('zenith.js', {
             env: {
                 ...process.env,
+                ...defaultEnv,
                 FORCE_COLOR: '1',
-                SHARD_ID: id
+                SHARD_ID: id,
+                API_TOKEN: config.token,
+                CATEGORIES: config.categories?.join(','),
+                BOTS_PER_SHARD: (config.botsPerShard ?? 15).toString(),
+                HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
+                HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
+                DEBUG: config.debug ? 'true' : 'false'
             }
         });
 
@@ -86,7 +101,7 @@ export default class FNLB {
 
             await Util.wait(10_000);
 
-            this.startShard(id);
+            this.startShard(config, id);
         });
 
         return ps
