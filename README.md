@@ -10,13 +10,15 @@ npm i fnlb@latest
 
 ## Start a bot
 
+This will start a single bot. You need to change the API Token to use the one of your FNLB account.  
+
 ```ts
 import FNLB from 'fnlb';
 
 const fnlb = new FNLB();
 
 await fnlb.start({
-    token: 'abc'
+    apiToken: 'abc'
 });
 ```
 
@@ -30,7 +32,7 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    token: 'abc',
+    apiToken: 'abc',
     botsPerShard: 10
 });
 ```
@@ -45,7 +47,7 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    token: 'abc',
+    apiToken: 'abc',
     numberOfShards: 2,
     botsPerShard: 10
 });
@@ -61,13 +63,12 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    token: 'abc',
+    apiToken: 'abc',
     categories: ['abc', 'abc']
     numberOfShards: 2,
     botsPerShard: 10
 });
 ```
-
 
 ## Stop your bot
 
@@ -79,7 +80,7 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 const subprocesses = await fnlb.start({
-    token: 'abc',
+    apiToken: 'abc',
     numberOfShards: 2,
     botsPerShard: 10
 });

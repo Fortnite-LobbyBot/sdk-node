@@ -1,5 +1,5 @@
 export interface StartConfig {
-	token: string;
+	apiToken: string;
 	categories?: string[];
 	numberOfShards?: number;
 	botsPerShard?: number;

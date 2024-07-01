@@ -64,7 +64,7 @@ export default class FNLB {
 	}
 
 	public async start(config: StartConfig) {
-		if (!config?.token) throw new Error('[FNLB ShardingManager] Please provide a FNLB token.');
+		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
 
 		await this.update();
 
@@ -89,7 +89,7 @@ export default class FNLB {
 	public async startShard(config: StartConfig, id: string) {
 		await this.update();
 
-		if (!config?.token) throw new Error('[FNLB ShardingManager] Please provide a FNLB token.');
+		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
 
 		this.log('Starting shard with id:', id);
 
@@ -99,7 +99,7 @@ export default class FNLB {
 				...defaultEnv,
 				FORCE_COLOR: '1',
 				SHARD_ID: id,
-				API_TOKEN: config.token,
+				API_TOKEN: config.apiToken,
 				CATEGORIES: config.categories?.join(','),
 				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
