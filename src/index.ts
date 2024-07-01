@@ -1,5 +1,5 @@
 import FNLB from './classes/FNLB';
 
-export * from './types/FNLBConfig';
+export * from './types/StartConfig';
 
 export default FNLB;

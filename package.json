@@ -1,10 +1,13 @@
 {
 	"name": "fnlb",
-	"version": "0.0.1",
-	"description": "Fortnite LobbyBot Framework",
+	"version": "0.0.2",
+	"description": "Self-Host your own Fortnite LobbyBot with FNLB's system.",
 	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"scripts": {
-		"build": "bun build --target=node --minify --outfile=./dist/index.js ./src/index.ts",
+		"build": "bun run src/build.ts",
+		"prepublishOnly": "bun run lint && bun run build",
 		"test": "bun run test/index.ts",
 		"lint": "bun run lint:biome && bun run lint:tsc",
 		"lint:biome": "bunx --bun @biomejs/biome check --write .",
@@ -12,6 +15,7 @@
 	},
 	"keywords": [],
 	"author": "FNLB-Project",
+	"files": ["dist"],
 	"license": "ISC",
 	"dependencies": {},
 	"devDependencies": {

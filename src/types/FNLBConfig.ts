@@ -1,4 +1,6 @@
 export interface FNLBConfig {
-    numberOfShards?: number;
-    token: string;
+	disableLogs?: boolean;
+	disableErrorLogs?: boolean;
+	disableSubProcessLogs?: boolean;
+	disableSubProcessErrorLogs?: boolean;
 }
