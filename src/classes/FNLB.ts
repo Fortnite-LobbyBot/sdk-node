@@ -1,8 +1,10 @@
 import { fork } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { FNLBConfig } from '../types/FNLBConfig';
 import { Util } from './Util';
+
+import type { FNLBConfig } from '../types/FNLBConfig';
+import type { StartConfig } from '../types/StartConfig';
 
 const defaultEnv = {
 	GATEWAY_URL: 'https://gateway.fnlb.net',
@@ -12,11 +14,28 @@ const defaultEnv = {
 
 export default class FNLB {
 	private isLoaded = false;
+	private config?: FNLBConfig;
+
+	public constructor(config?: FNLBConfig) {
+		this.config = config;
+	}
+
+	private log(...message: any[]) {
+		if (!this.config?.disableLogs) console.log('[FNLB ShardingManager]', ...message);
+	}
+
+	private warn(...message: any[]) {
+		if (!this.config?.disableErrorLogs) console.warn('[FNLB ShardingManager]', ...message);
+	}
+
+	private error(...message: any[]) {
+		if (!this.config?.disableErrorLogs) console.error('[FNLB ShardingManager]', ...message);
+	}
 
 	public async update() {
 		if (this.isLoaded) return;
 
-		console.log('[FNLB ShardingManager] Checking for updates...');
+		this.log('Checking for updates...');
 
 		const releaseURL = 'https://dist.fnlb.net/packages/zenith/release';
 		const response = await fetch(releaseURL);
@@ -44,7 +63,7 @@ export default class FNLB {
 		this.isLoaded = true;
 	}
 
-	public async start(config: FNLBConfig) {
+	public async start(config: StartConfig) {
 		await this.update();
 
 		const numberOfShards = config.numberOfShards ?? 1;
@@ -65,12 +84,12 @@ export default class FNLB {
 		return processes;
 	}
 
-	public async startShard(config: FNLBConfig, id: string) {
+	public async startShard(config: StartConfig, id: string) {
 		await this.update();
 
 		if (!config?.token) throw new Error('[FNLB ShardingManager] Please provide a FNLB token.');
 
-		console.log('[FNLB ShardingManager] Starting shard with id:', id);
+		this.log('Starting shard with id:', id);
 
 		const ps = fork('zenith.js', {
 			env: {
@@ -97,12 +116,12 @@ export default class FNLB {
 
 		ps.on('close', async (code) => {
 			if (code === 0) {
-				console.warn('[FNLB ShardingManager] Child process exited with code:', code?.toString() ?? 'none');
+				this.warn('Child process exited with code:', code?.toString() ?? 'none');
 			} else {
-				console.error('[FNLB ShardingManager] Child process exited with code:', code?.toString() ?? 'none');
+				this.error('Child process exited with code:', code?.toString() ?? 'none');
 			}
 
-			console.info('[FNLB ShardingManager] Trying to restart process...');
+			this.log('Trying to restart process...');
 
 			await Util.wait(10_000);
 

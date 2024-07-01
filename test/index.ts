@@ -3,6 +3,7 @@ import FNLB from '../src/index';
 const fnlb = new FNLB();
 
 await fnlb.start({
+	token: process.env.TOKEN ?? '',
 	numberOfShards: 1,
-	token: '123'
+	categories: process.env.CATEGORIES?.split(',')
 });
