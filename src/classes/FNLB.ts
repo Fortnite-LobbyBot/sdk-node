@@ -64,6 +64,8 @@ export default class FNLB {
 	}
 
 	public async start(config: StartConfig) {
+		if (!config?.token) throw new Error('[FNLB ShardingManager] Please provide a FNLB token.');
+
 		await this.update();
 
 		const numberOfShards = config.numberOfShards ?? 1;
@@ -106,13 +108,17 @@ export default class FNLB {
 			}
 		});
 
-		ps.stdout?.on('data', (data) => {
-			process.stdout.write(data.toString('utf8'));
-		});
+		if (!this.config?.disableSubProcessLogs)
+			ps.stdout?.on('data', (data) => {
+				process.stdout.write(data.toString('utf8'));
+			});
 
-		ps.stderr?.on('data', (data) => {
-			process.stderr.write(data.toString('utf8'));
-		});
+
+		if (!this.config?.disableSubProcessErrorLogs)
+			ps.stderr?.on('data', (data) => {
+				process.stderr.write(data.toString('utf8'));
+			});
+
 
 		ps.on('close', async (code) => {
 			if (code === 0) {
