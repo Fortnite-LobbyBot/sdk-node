@@ -72,18 +72,18 @@ await fnlb.start({
 
 ## Stop your bot
 
-The fnlb.start method returns a Subprocess array
+The FNLB.start() method returns a Subprocess array with every shard. You can iterate it and kill the shards.
 
 ```ts
 import FNLB from 'fnlb';
 
 const fnlb = new FNLB();
 
-const subprocesses = await fnlb.start({
+const shards = await fnlb.start({
     apiToken: 'abc',
     numberOfShards: 2,
     botsPerShard: 10
 });
 
-subprocesses.forEach((ps) => ps.kill())
+shards.forEach((shard) => shard.kill())
 ```
