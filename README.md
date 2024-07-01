@@ -51,6 +51,24 @@ await fnlb.start({
 });
 ```
 
+## Start bots only from certain categories
+
+To do it you can configure the categories setting.
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB();
+
+await fnlb.start({
+    token: 'abc',
+    categories: ['abc', 'abc']
+    numberOfShards: 2,
+    botsPerShard: 10
+});
+```
+
+
 ## Stop your bot
 
 The fnlb.start method returns a Subprocess array
