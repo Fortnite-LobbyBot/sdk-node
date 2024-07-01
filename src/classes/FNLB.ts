@@ -101,7 +101,7 @@ export default class FNLB {
 				SHARD_ID: id,
 				API_TOKEN: config.token,
 				CATEGORIES: config.categories?.join(','),
-				BOTS_PER_SHARD: (config.botsPerShard ?? 15).toString(),
+				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
 				DEBUG: config.debug ? 'true' : 'false'
@@ -113,12 +113,10 @@ export default class FNLB {
 				process.stdout.write(data.toString('utf8'));
 			});
 
-
 		if (!this.config?.disableSubProcessErrorLogs)
 			ps.stderr?.on('data', (data) => {
 				process.stderr.write(data.toString('utf8'));
 			});
-
 
 		ps.on('close', async (code) => {
 			if (code === 0) {

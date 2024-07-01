@@ -1,7 +1,7 @@
 {
 	"name": "fnlb",
-	"version": "0.0.1",
-	"description": "Fortnite LobbyBot Module",
+	"version": "0.0.2",
+	"description": "Self-Host your own Fortnite LobbyBot with FNLB's system.",
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
