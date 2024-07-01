@@ -1,0 +1,27 @@
+{
+	"name": "fnlb",
+	"version": "0.0.1",
+	"description": "Fortnite LobbyBot Framework",
+	"type": "module",
+	"scripts": {
+		"build": "bun build --target=node --minify --outfile=./dist/index.js ./src/index.ts",
+		"test": "bun run test/index.ts",
+		"lint": "bun run lint:biome && bun run lint:tsc",
+		"lint:biome": "bunx --bun @biomejs/biome check --write .",
+		"lint:tsc": "bun tsc --noEmit"
+	},
+	"keywords": [],
+	"author": "FNLB-Project",
+	"license": "ISC",
+	"dependencies": {},
+	"devDependencies": {
+		"@biomejs/biome": "^1.8.3",
+		"@types/bun": "^1.1.6",
+		"bun-plugin-dts": "^0.2.1",
+		"@typescript-eslint/eslint-plugin": "^7.14.1",
+		"@typescript-eslint/parser": "^7.14.1",
+		"eslint": "^9.6.0"
+	},
+	"packageManager": "bun@1.1.17",
+	"trustedDependencies": ["@biomejs/biome"]
+}
