@@ -6,7 +6,7 @@
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": false,
-		"ignore": ["**/node_modules/"],
+		"ignore": ["**/node_modules/", "zenith.js"],
 		"indentStyle": "tab",
 		"indentWidth": 4,
 		"lineEnding": "lf",

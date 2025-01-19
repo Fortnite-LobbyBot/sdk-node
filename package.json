@@ -1,31 +1,31 @@
 {
 	"name": "fnlb",
-	"version": "0.0.2",
-	"description": "Self-Host your own Fortnite LobbyBot with FNLB's system.",
-	"type": "module",
+	"version": "0.0.3",
+	"author": "FNLB-Project",
 	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "^1.1.17",
+		"bun-plugin-dts": "^0.3.0",
+		"@typescript-eslint/eslint-plugin": "^8.20.0",
+		"@typescript-eslint/parser": "^8.20.0",
+		"eslint": "^9.18.0"
+	},
+	"description": "Self-Host your own Fortnite LobbyBot with FNLB's system.",
+	"files": ["dist"],
+	"keywords": [],
+	"license": "ISC",
+	"packageManager": "bun@1.1.17",
 	"scripts": {
 		"build": "bun run src/build.ts",
-		"prepublishOnly": "bun run lint && bun run build",
+		"prepublishOnly": "bun run lint && bun run build --env=disable",
 		"test": "bun run test/index.ts",
+		"test:node": "bun run build && node test/node.js",
 		"lint": "bun run lint:biome && bun run lint:tsc",
 		"lint:biome": "bunx --bun @biomejs/biome check --write .",
 		"lint:tsc": "bun tsc --noEmit"
 	},
-	"keywords": [],
-	"author": "FNLB-Project",
-	"files": ["dist"],
-	"license": "ISC",
-	"dependencies": {},
-	"devDependencies": {
-		"@biomejs/biome": "^1.8.3",
-		"@types/bun": "^1.1.6",
-		"bun-plugin-dts": "^0.2.1",
-		"@typescript-eslint/eslint-plugin": "^7.14.1",
-		"@typescript-eslint/parser": "^7.14.1",
-		"eslint": "^9.6.0"
-	},
-	"packageManager": "bun@1.1.17",
-	"trustedDependencies": ["@biomejs/biome"]
+	"trustedDependencies": ["@biomejs/biome"],
+	"type": "module",
+	"types": "dist/index.d.ts"
 }

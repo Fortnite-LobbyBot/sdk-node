@@ -3,4 +3,5 @@ export interface FNLBConfig {
 	disableErrorLogs?: boolean;
 	disableSubProcessLogs?: boolean;
 	disableSubProcessErrorLogs?: boolean;
+	clusterName?: string;
 }

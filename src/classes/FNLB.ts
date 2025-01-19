@@ -1,20 +1,15 @@
 import { fork } from 'node:child_process';
-import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Util } from './Util';
 
 import type { FNLBConfig } from '../types/FNLBConfig';
 import type { StartConfig } from '../types/StartConfig';
 
-const defaultEnv = {
-	GATEWAY_URL: 'https://gateway.fnlb.net',
-	CDN_URL: 'https://cdn.fnlb.net',
-	ENIGMA_URL: 'https://void.fnlb.net'
-};
-
 export default class FNLB {
 	private isLoaded = false;
-	private config?: FNLBConfig;
+	private readonly config?: FNLBConfig;
 
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
@@ -24,18 +19,26 @@ export default class FNLB {
 		if (!this.config?.disableLogs) console.log('[FNLB ShardingManager]', ...message);
 	}
 
+	private success(...message: any[]) {
+		if (!this.config?.disableLogs) console.log('[FNLB ShardingManager] [OK]', ...message);
+	}
+
 	private warn(...message: any[]) {
-		if (!this.config?.disableErrorLogs) console.warn('[FNLB ShardingManager]', ...message);
+		if (!this.config?.disableErrorLogs) console.warn('[FNLB ShardingManager] [WRN]', ...message);
 	}
 
 	private error(...message: any[]) {
-		if (!this.config?.disableErrorLogs) console.error('[FNLB ShardingManager]', ...message);
+		if (!this.config?.disableErrorLogs) console.error('[FNLB ShardingManager] [ERR]', ...message);
 	}
 
 	public async update() {
 		if (this.isLoaded) return;
 
-		this.log('Checking for updates...');
+		const filePath = path.join('zenith.js');
+
+		const file = await readFile(filePath, 'utf-8').catch(() => null);
+
+		this.log(file ? 'Checking for updates...' : 'Downloading FNLB...');
 
 		const releaseURL = 'https://dist.fnlb.net/packages/zenith/release';
 		const response = await fetch(releaseURL);
@@ -44,6 +47,24 @@ export default class FNLB {
 			throw new Error(`[FNLB ShardingManager] Failed to check for updates, status code: ${response.status}`);
 
 		const data = (await response.json()) as { hash: string; url: string; version: string };
+
+		if (file) {
+			const hasher = createHash('sha256');
+
+			hasher.update(file);
+
+			const hash = hasher.digest().toString('hex');
+
+			if (hash === data.hash) {
+				this.success(`FNLB v${data.version} is up to date`);
+				this.isLoaded = true;
+
+				this.success(`Finished loading FNLB v${data.version}`);
+				return;
+			}
+
+			this.log(`Downloading update for FNLB v${data.version}`);
+		}
 
 		const downloadURL = data.url;
 
@@ -54,13 +75,15 @@ export default class FNLB {
 				`[FNLB ShardingManager] Failed to download update, status code: ${downloadResponse.status}`
 			);
 
+		this.log(`Downloaded FNLB v${data.version}`);
+
 		const release = await downloadResponse.text();
 
-		const tempFilePath = path.join('zenith.js');
-
-		fs.writeFileSync(tempFilePath, release);
+		await writeFile(filePath, release);
 
 		this.isLoaded = true;
+
+		this.success(`Finished loading FNLB v${data.version}`);
 	}
 
 	public async start(config: StartConfig) {
@@ -93,10 +116,9 @@ export default class FNLB {
 
 		this.log('Starting shard with id:', id);
 
-		const ps = fork('zenith.js', {
+		const ps = fork('zenith.js', [], {
 			env: {
 				...process.env,
-				...defaultEnv,
 				FORCE_COLOR: '1',
 				SHARD_ID: id,
 				API_TOKEN: config.apiToken,
@@ -104,7 +126,14 @@ export default class FNLB {
 				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
-				DEBUG: config.debug ? 'true' : 'false'
+				LOG_LEVEL: config.logLevel,
+				CLUSTER_ID:
+					this.config?.clusterName
+						?.trim()
+						.replace(/ +(?= )/g, '')
+						.toLowerCase()
+						.replaceAll(' ', '-') ?? 'unknown',
+				CLUSTER_NAME: this.config?.clusterName?.trim()
 			}
 		});
 

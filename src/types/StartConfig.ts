@@ -5,5 +5,5 @@ export interface StartConfig {
 	botsPerShard?: number;
 	hideUsernames?: boolean;
 	hideEmails?: boolean;
-	debug?: boolean;
+	logLevel?: 'INFO' | 'DEBUG';
 }
