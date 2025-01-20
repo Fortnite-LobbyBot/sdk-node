@@ -10,6 +10,8 @@ import type { StartConfig } from '../types/StartConfig';
 export default class FNLB {
 	private isLoaded = false;
 	private readonly config?: FNLBConfig;
+	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
+	private shouldRestart = true;
 
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
@@ -46,7 +48,11 @@ export default class FNLB {
 		if (!response.ok)
 			throw new Error(`[FNLB ShardingManager] Failed to check for updates, status code: ${response.status}`);
 
-		const data = (await response.json()) as { hash: string; url: string; version: string };
+		const data = (await response.json()) as {
+			hash: string;
+			url: string;
+			version: string;
+		};
 
 		if (file) {
 			const hasher = createHash('sha256');
@@ -87,26 +93,38 @@ export default class FNLB {
 	}
 
 	public async start(config: StartConfig) {
+		await this.stop();
+
+		this.shouldRestart = true;
+
 		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
 
 		await this.update();
 
 		const numberOfShards = config.numberOfShards ?? 1;
 
-		const processes = [];
-
 		for (let i = 0; i < numberOfShards; i++) {
 			const date = new Date();
 
-			processes.push(
-				this.startShard(
-					config,
-					`${i.toString().padStart(2, '0')}/${date.getDay()}${date.getHours()}${date.getMinutes()}${date.getSeconds()}`
-				)
-			);
+			const id = `${i
+				.toString()
+				.padStart(2, '0')}/${date.getDay()}${date.getHours()}${date.getMinutes()}${date.getSeconds()}`;
+			const process = await this.startShard(config, id);
+			this.activeProcesses.set(id, process);
+		}
+	}
+
+	public async stop() {
+		this.log('Stopping all active processes...');
+		this.shouldRestart = false;
+
+		for (const [id, ps] of this.activeProcesses) {
+			this.log(`Stopping process with id: ${id}`);
+			ps.kill();
 		}
 
-		return processes;
+		this.activeProcesses.clear();
+		this.log('All processes stopped.');
 	}
 
 	public async startShard(config: StartConfig, id: string) {
@@ -148,17 +166,21 @@ export default class FNLB {
 			});
 
 		ps.on('close', async (code) => {
-			if (code === 0) {
-				this.warn('Child process exited with code:', code?.toString() ?? 'none');
+			this.activeProcesses.delete(id);
+
+			if (this.shouldRestart) {
+				if (code === 0) {
+					this.warn('Child process exited with code:', code?.toString() ?? 'none');
+				} else {
+					this.error('Child process exited with code:', code?.toString() ?? 'none');
+				}
+				await Util.wait(10_000);
+
+				const restartedProcess = await this.startShard(config, id);
+				this.activeProcesses.set(id, restartedProcess);
 			} else {
-				this.error('Child process exited with code:', code?.toString() ?? 'none');
+				this.log(`Child process ${id} stopped.`);
 			}
-
-			this.log('Trying to restart process...');
-
-			await Util.wait(10_000);
-
-			this.startShard(config, id);
 		});
 
 		return ps;

@@ -72,18 +72,34 @@ await fnlb.start({
 
 ## Stop your bot
 
-The FNLB.start() method returns a Subprocess array with every shard. You can iterate it and kill the shards.
+The FNLB.stop() method will kill all the shards.
 
 ```ts
 import FNLB from 'fnlb';
 
 const fnlb = new FNLB();
 
-const shards = await fnlb.start({
+await fnlb.start({
     apiToken: 'abc',
     numberOfShards: 2,
     botsPerShard: 10
 });
 
-shards.forEach((shard) => shard.kill())
+// do something
+
+await fnlb.stop()
+```
+
+## Set a cluster name
+
+You can use the clusterName option to set your cluster name.
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB({ clusterName: 'MyCluster' });
+
+await fnlb.start({
+    apiToken: 'abc'
+});
 ```
