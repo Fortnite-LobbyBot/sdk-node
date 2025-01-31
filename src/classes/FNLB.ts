@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Util } from './Util';
 
 import type { FNLBConfig } from '../types/FNLBConfig';
+import { LogsMessageFormat } from '../types/LogsMessage';
 import type { StartConfig } from '../types/StartConfig';
 
 export default class FNLB {
@@ -18,25 +19,57 @@ export default class FNLB {
 	}
 
 	private log(...message: any[]) {
-		if (!this.config?.disableLogs) console.log('[FNLB ShardingManager]', ...message);
+		if (!this.config?.disableLogs) {
+			console.log('[FNLB ShardingManager]', ...message);
+
+			this.config?.onLogMessage?.({
+				timestamp: Date.now(),
+				content: message.join(' '),
+				format: LogsMessageFormat.Neutral
+			});
+		}
 	}
 
 	private success(...message: any[]) {
-		if (!this.config?.disableLogs) console.log('[FNLB ShardingManager] [OK]', ...message);
+		if (!this.config?.disableLogs) {
+			console.log('[FNLB ShardingManager] [OK]', ...message);
+
+			this.config?.onLogMessage?.({
+				timestamp: Date.now(),
+				content: message.join(' '),
+				format: LogsMessageFormat.Success
+			});
+		}
 	}
 
 	private warn(...message: any[]) {
-		if (!this.config?.disableErrorLogs) console.warn('[FNLB ShardingManager] [WRN]', ...message);
+		if (!this.config?.disableErrorLogs) {
+			console.warn('[FNLB ShardingManager] [WRN]', ...message);
+
+			this.config?.onLogMessage?.({
+				timestamp: Date.now(),
+				content: message.join(' '),
+				format: LogsMessageFormat.Warn
+			});
+		}
 	}
 
 	private error(...message: any[]) {
-		if (!this.config?.disableErrorLogs) console.error('[FNLB ShardingManager] [ERR]', ...message);
+		if (!this.config?.disableErrorLogs) {
+			console.error('[FNLB ShardingManager] [ERR]', ...message);
+
+			this.config?.onLogMessage?.({
+				timestamp: Date.now(),
+				content: message.join(' '),
+				format: LogsMessageFormat.Error
+			});
+		}
 	}
 
 	public async update() {
 		if (this.isLoaded) return;
 
-		const filePath = path.join('zenith.js');
+		const filePath = path.join('zenith.mjs');
 
 		const file = await readFile(filePath, 'utf-8').catch(() => null);
 
@@ -134,7 +167,7 @@ export default class FNLB {
 
 		this.log('Starting shard with id:', id);
 
-		const ps = fork('zenith.js', [], {
+		const ps = fork('zenith.mjs', [], {
 			env: {
 				...process.env,
 				FORCE_COLOR: '1',
@@ -152,17 +185,34 @@ export default class FNLB {
 						.toLowerCase()
 						.replaceAll(' ', '-') ?? 'unknown',
 				CLUSTER_NAME: this.config?.clusterName?.trim()
-			}
+			},
+			stdio: ['inherit', 'pipe', 'pipe', 'ipc']
 		});
 
 		if (!this.config?.disableSubProcessLogs)
 			ps.stdout?.on('data', (data) => {
-				process.stdout.write(data.toString('utf8'));
+				const log = data.toString('utf8');
+
+				process.stdout.write(log);
+
+				this.config?.onSubProcessLogMessage?.({
+					timestamp: Date.now(),
+					content: log,
+					format: LogsMessageFormat.Neutral
+				});
 			});
 
 		if (!this.config?.disableSubProcessErrorLogs)
 			ps.stderr?.on('data', (data) => {
-				process.stderr.write(data.toString('utf8'));
+				const log = data.toString('utf8');
+
+				process.stderr.write(log);
+
+				this.config?.onSubProcessLogMessage?.({
+					timestamp: Date.now(),
+					content: log,
+					format: LogsMessageFormat.Error
+				});
 			});
 
 		ps.on('close', async (code) => {
