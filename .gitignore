@@ -131,7 +131,8 @@ out
 .yarn/install-state.gz
 .pnp.*
 
-zenith.mjs
+.fnlb
+
 dist
 
 test

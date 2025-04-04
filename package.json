@@ -1,19 +1,17 @@
 {
 	"name": "fnlb",
-	"version": "1.0.0",
-	"author": "FNLB-Project",
+	"version": "1.1.0",
+	"author": "FNLB",
 	"main": "dist/index.js",
+	"homepage": "https://fnlb.net/",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@types/bun": "^1.2.1",
-		"bun-plugin-dts": "^0.3.0",
-		"@typescript-eslint/eslint-plugin": "^8.22.0",
-		"@typescript-eslint/parser": "^8.22.0",
-		"eslint": "^9.19.0"
+		"@types/bun": "^1.2.8",
+		"bun-plugin-dts": "^0.3.0"
 	},
-	"description": "Self-Host your own Fortnite LobbyBot with FNLB's system.",
+	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
 	"files": ["dist"],
-	"keywords": [],
+	"keywords": ["fnlb", "fortnite", "lobbybot", "self-host", "botlobbies"],
 	"license": "ISC",
 	"packageManager": "bun@1.1.17",
 	"scripts": {

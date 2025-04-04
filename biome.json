@@ -6,7 +6,7 @@
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": false,
-		"ignore": ["**/node_modules/", "zenith.mjs"],
+		"ignore": ["**/node_modules/", "**/.fnlb/"],
 		"indentStyle": "tab",
 		"indentWidth": 4,
 		"lineEnding": "lf",
@@ -32,7 +32,7 @@
 	},
 	"linter": {
 		"enabled": false,
-		"ignore": ["**/node_modules/"],
+		"ignore": ["**/node_modules/", "/.fnlb/"],
 		"rules": {}
 	},
 	"organizeImports": {

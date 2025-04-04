@@ -10,4 +10,7 @@ export interface FNLBConfig {
 	disableErrorLogs?: boolean;
 	disableSubProcessLogs?: boolean;
 	disableSubProcessErrorLogs?: boolean;
+
+	maxDownloadRetries?: number;
+	maxBackoffMs?: number;
 }
