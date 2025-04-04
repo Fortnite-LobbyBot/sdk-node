@@ -17,8 +17,9 @@ Using **[bun](https://bun.sh)**? Install the latest version via **bun install**:
 bun install fnlb@latest
 ```
 
-## ⛓️‍💥 Useful Links
+## 🔗 Useful Links
 
+- 🌐 **[FNLB Website](https://fnlb.net)**
 - 📖 **[FNLB Documentation](https://docs.fnlb.net/introduction)**
 - 📄 **[FNLB Changelog](https://docs.fnlb.net/bots/changelog)**
 - 🗨️ **[FNLB Discord Server](https://fnlb.net/discord)**
