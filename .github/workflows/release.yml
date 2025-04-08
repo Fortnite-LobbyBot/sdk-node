@@ -37,10 +37,12 @@ jobs:
               env:
                   TEST_API_TOKEN: ${{ secrets.TEST_API_TOKEN }}
 
-            - name: Install NPM
-              run: bun install -g npm
-
-            - name: Publish
-              run: bunx --bun npm publish --provenance --tag latest
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20.x'
+                  registry-url: 'https://registry.npmjs.org'
+            - run: npm ci
+            - run: npm publish --provenance --access public
               env:
-                  NPM_AUTH_TOKEN : ${{ secrets.NPM_TOKEN }}
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
