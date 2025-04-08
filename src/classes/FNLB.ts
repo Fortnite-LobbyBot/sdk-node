@@ -118,7 +118,7 @@ export default class FNLB {
 
 			if (this.shouldRestart) {
 				if (code === 0) {
-					this.warn('Child process exited with code:', code?.toString() ?? 'none');
+					this.warn('Child process exited with code:', code, '(OK)');
 				} else {
 					this.error('Child process exited with code:', code?.toString() ?? 'none');
 				}
@@ -163,7 +163,7 @@ export default class FNLB {
 			} catch (error) {
 				const nextDelay = Math.min(delay * 2, maxBackoffMs);
 				attempt++;
-				this.error(error);
+				this.error('Update error:', error);
 				this.warn(
 					`Check for updates attempt ${attempt} failed: ${(error as Error).message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
 				);
@@ -216,7 +216,7 @@ export default class FNLB {
 			} catch (error: any) {
 				const nextDelay = Math.min(delay * 2, maxBackoffMs);
 				attempt++;
-				this.error(error);
+				this.error('Download error:', error);
 				this.warn(
 					`Download attempt ${attempt} failed: ${error.message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
 				);
