@@ -26,6 +26,6 @@
 		"noUnusedParameters": true,
 		"verbatimModuleSyntax": true
 	},
-	"include": ["src/**/*"],
-	"exclude": ["dist/", "node_modules/"]
+	"include": ["src/**/*", "tests/"],
+	"exclude": ["dist/", "node_modules/", ".fnlb/"]
 }

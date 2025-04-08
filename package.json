@@ -17,11 +17,11 @@
 	"scripts": {
 		"build": "bun run src/build.ts",
 		"prepublishOnly": "bun run lint && bun run build --env=disable",
-		"test": "bun run test/index.ts",
 		"test:node": "bun run build && node test/node.js",
 		"lint": "bun run lint:biome && bun run lint:tsc",
 		"lint:biome": "bunx --bun @biomejs/biome check --write .",
-		"lint:tsc": "bun tsc --noEmit"
+		"lint:tsc": "bun tsc --noEmit",
+		"test": "bun run lint && bun test"
 	},
 	"trustedDependencies": ["@biomejs/biome"],
 	"type": "module",
