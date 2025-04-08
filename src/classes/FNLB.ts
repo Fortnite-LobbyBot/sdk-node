@@ -163,6 +163,7 @@ export default class FNLB {
 			} catch (error) {
 				const nextDelay = Math.min(delay * 2, maxBackoffMs);
 				attempt++;
+				this.error(error);
 				this.warn(
 					`Check for updates attempt ${attempt} failed: ${(error as Error).message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
 				);
@@ -215,6 +216,7 @@ export default class FNLB {
 			} catch (error: any) {
 				const nextDelay = Math.min(delay * 2, maxBackoffMs);
 				attempt++;
+				this.error(error);
 				this.warn(
 					`Download attempt ${attempt} failed: ${error.message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
 				);
