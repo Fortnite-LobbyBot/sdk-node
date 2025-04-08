@@ -1,16 +1,32 @@
-# Fortnite LobbyBot
+# 🚀 FNLB – Self-Host Your Own Fortnite Bot
 
-Self-Host your own Fortnite LobbyBot with FNLB's system.
+Easily run your own bot using **[FNLB](https://fnlb.net)**, a powerful and scalable system for managing Fortnite bots.  
+Whether you're running one bot or hundreds, FNLB gives you full control.  
 
-## Installation
+## 📦 Installation
 
-```sh
-npm i fnlb@latest
+Install the latest version via **npm install**:
+
+```bash
+npm install fnlb@latest
 ```
 
-## Start a bot
+Using **[bun](https://bun.sh)**? Install the latest version via **bun install**:
 
-This will start a single bot. You need to change the API Token to use the one of your FNLB account.  
+```bash
+bun install fnlb@latest
+```
+
+## 🔗 Useful Links
+
+- 🌐 **[FNLB Website](https://fnlb.net)**
+- 📖 **[FNLB Documentation](https://docs.fnlb.net/introduction)**
+- 📄 **[FNLB Changelog](https://docs.fnlb.net/bots/changelog)**
+- 🗨️ **[FNLB Discord Server](https://fnlb.net/discord)**
+
+## 🤖 Starting a Single Bot
+
+Get started with a single bot using your [FNLB API token](https://app.fnlb.net/account):
 
 ```ts
 import FNLB from 'fnlb';
@@ -18,13 +34,14 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    apiToken: 'abc'
+    apiToken: 'your-api-token', // 🔑 Replace with your actual token from https://app.fnlb.net/account
+    categories: ['your-category-id'] // Get the category of your bot on https://app.fnlb.net/bots -> Click on your bot -> About this bot -> Category ID
 });
 ```
 
-## Start multiple bots
+## 🔁 Running Multiple Bots (Same Shard)
 
-To do it you can configure the botsPerShard setting. This example will spawn 10 bots on the same subprocess.
+Run multiple bots in a **single subprocess** using the `botsPerShard` option:
 
 ```ts
 import FNLB from 'fnlb';
@@ -32,14 +49,15 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    apiToken: 'abc',
-    botsPerShard: 10
+    apiToken: 'your-api-token',
+    categories: ['your-category-id'],
+    botsPerShard: 10 // 🧱 Spawns max 10 bots
 });
 ```
 
-## Start multiple shards
+## 🧩 Using Multiple Shards (Subprocesses)
 
-To do it you can configure the numberOfShards setting. This example will spawn 2 shards (subprocesses) with 10 bots per shard for a total of 20 bots.
+Scale even more by spawning multiple **shards** (subprocesses) with multiple bots each:
 
 ```ts
 import FNLB from 'fnlb';
@@ -47,15 +65,36 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    apiToken: 'abc',
+    apiToken: 'your-api-token',
+    categories: ['your-category-id'],
+    numberOfShards: 2,     // 2 shards 🧩
+    botsPerShard: 10       // max 10 bots per shard 🤖
+});
+```
+
+> 💡 Total bots: `numberOfShards × botsPerShard`  
+> In this example: 2 × 10 = **20 bots max**
+
+## 🗂️ Launching Bots Across Multiple Categories
+
+Want to run bots from different FNLB categories? Just add them to the `categories` array:
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB();
+
+await fnlb.start({
+    apiToken: 'your-api-token',
+    categories: ['category-id-1', 'category-id-2'], // 🔄 Multi-category support
     numberOfShards: 2,
     botsPerShard: 10
 });
 ```
 
-## Start bots only from certain categories
+## ⛔ Stopping All Bots
 
-To do it you can configure the categories setting.
+Shut everything down cleanly using the `stop()` method:
 
 ```ts
 import FNLB from 'fnlb';
@@ -63,27 +102,61 @@ import FNLB from 'fnlb';
 const fnlb = new FNLB();
 
 await fnlb.start({
-    apiToken: 'abc',
-    categories: ['abc', 'abc']
+    apiToken: 'your-api-token',
     numberOfShards: 2,
     botsPerShard: 10
 });
+
+await fnlb.stop(); // 🛑 Stops all shards and bots
 ```
 
-## Stop your bot
+## 🏷️ Naming Your Cluster
 
-The FNLB.start() method returns a Subprocess array with every shard. You can iterate it and kill the shards.
+Customize your cluster with a unique name using the `clusterName` option:
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB({ clusterName: 'MyAwesomeCluster' });
+
+await fnlb.start({
+    apiToken: 'your-api-token'
+});
+```
+
+## 🔄 Auto-Restart Every Hour (Optional)
+
+Want to keep things fresh? Here's how to restart your bots automatically every hour:
 
 ```ts
 import FNLB from 'fnlb';
 
 const fnlb = new FNLB();
 
-const shards = await fnlb.start({
-    apiToken: 'abc',
-    numberOfShards: 2,
-    botsPerShard: 10
-});
+async function startFNLB() {
+    await fnlb.start({
+        apiToken: 'your-api-token',
+        numberOfShards: 1,
+        botsPerShard: 5,
+        categories: ['your-category-id']
+    });
+}
 
-shards.forEach((shard) => shard.kill())
+async function restartFNLB() {
+    console.log('🔁 Restarting FNLB...');
+    await fnlb.stop();
+    await startFNLB();
+}
+
+await startFNLB();
+
+// ⏱️ Restart every hour (3600000 ms)
+setInterval(restartFNLB, 3_600_000);
 ```
+
+## 🗨️ Join the Community
+
+Need help, support, or just want to chat with other developers?  
+Come hang out with us on Discord! 👇
+
+[![Join FNLB on Discord](https://discord.com/api/guilds/1106879710744543303/widget.png?style=banner3)](https://fnlb.net/discord)

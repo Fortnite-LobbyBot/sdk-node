@@ -1,3 +1,8 @@
+export enum LogLevel {
+	Info = 'INFO',
+	Debug = 'DEBUG'
+}
+
 export interface StartConfig {
 	apiToken: string;
 	categories?: string[];
@@ -5,5 +10,5 @@ export interface StartConfig {
 	botsPerShard?: number;
 	hideUsernames?: boolean;
 	hideEmails?: boolean;
-	debug?: boolean;
+	logLevel?: LogLevel;
 }
