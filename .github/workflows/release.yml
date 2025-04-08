@@ -5,6 +5,13 @@ on:
         branches:
             - stable
 
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
 jobs:
     release:
         name: 'Release to npm'
