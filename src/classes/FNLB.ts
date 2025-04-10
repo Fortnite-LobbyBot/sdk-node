@@ -15,6 +15,7 @@ export default class FNLB {
 
 	private isLoaded = false;
 	private shouldRestart = true;
+	private runId = 0;
 
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
@@ -22,42 +23,43 @@ export default class FNLB {
 
 	public async start(config: StartConfig) {
 		await this.stop();
-
 		this.shouldRestart = true;
+		this.runId++;
+		const currentRunId = this.runId;
 
 		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
 
 		await this.update();
 
 		const numberOfShards = config.numberOfShards ?? 1;
-
 		const prefix = (~~(Math.random() * 10000)).toString(36) + 'fnlb' + (~~(Date.now() / 1000)).toString(36);
 
 		for (let i = 0; i < numberOfShards; i++) {
 			const id = `${prefix}-${i.toString().padStart(2, '0')}`;
-			const process = await this.startShard(config, id);
-			this.activeProcesses.set(id, process);
+			const processInstance = await this.startShard(config, id, currentRunId);
+			this.activeProcesses.set(id, processInstance);
 		}
 	}
 
 	public async stop() {
 		this.shouldRestart = false;
+		this.runId++;
 
 		if (this.activeProcesses.size === 0) return;
 
-		this.log('Stopping all active processes...');
+		this.log('Stopping all active shards...');
 
 		for (const [id, ps] of this.activeProcesses) {
-			this.log(`Stopping process with ID: ${id}`);
+			this.log(`Stopping shard with ID: ${id}`);
 			ps.kill();
 		}
 
 		this.activeProcesses.clear();
 
-		this.log('All processes stopped.');
+		this.log('All shards stopped.');
 	}
 
-	public async startShard(config: StartConfig, id: string) {
+	public async startShard(config: StartConfig, id: string, currentRunId: number) {
 		await this.update();
 
 		if (!config?.apiToken || config.apiToken.length < 10)
@@ -90,9 +92,7 @@ export default class FNLB {
 		if (!this.config?.disableSubProcessLogs)
 			ps.stdout?.on('data', (data) => {
 				const log = data.toString('utf8');
-
 				process.stdout.write(log);
-
 				this.config?.onSubProcessLogMessage?.({
 					timestamp: Date.now(),
 					content: log,
@@ -103,9 +103,7 @@ export default class FNLB {
 		if (!this.config?.disableSubProcessErrorLogs)
 			ps.stderr?.on('data', (data) => {
 				const log = data.toString('utf8');
-
 				process.stderr.write(log);
-
 				this.config?.onSubProcessLogMessage?.({
 					timestamp: Date.now(),
 					content: log,
@@ -115,19 +113,20 @@ export default class FNLB {
 
 		ps.on('close', async (code) => {
 			this.activeProcesses.delete(id);
-
-			if (this.shouldRestart) {
+			if (this.shouldRestart && currentRunId === this.runId) {
 				if (code === 0) {
-					this.warn('Child process exited with code:', code, '(OK)');
+					this.warn('Shard exited with code:', code);
 				} else {
-					this.error('Child process exited with code:', code?.toString() ?? 'none');
+					this.error('Shard exited with code:', code?.toString() ?? 'none');
 				}
-				await Util.wait(10_000);
 
-				const restartedProcess = await this.startShard(config, id);
+				this.log('Trying to restart shard...');
+
+				await Util.wait(10_000);
+				const restartedProcess = await this.startShard(config, id, currentRunId);
 				this.activeProcesses.set(id, restartedProcess);
 			} else {
-				this.log(`Child process ${id} stopped.`);
+				this.log(`Shard ${id} stopped.`);
 			}
 		});
 
@@ -238,7 +237,6 @@ export default class FNLB {
 	private log(...message: any[]) {
 		if (!this.config?.disableLogs) {
 			console.log('[FNLB ShardingManager]', ...message);
-
 			this.config?.onLogMessage?.({
 				timestamp: Date.now(),
 				content: message.join(' '),
@@ -250,7 +248,6 @@ export default class FNLB {
 	private success(...message: any[]) {
 		if (!this.config?.disableLogs) {
 			console.log('[FNLB ShardingManager] [OK]', ...message);
-
 			this.config?.onLogMessage?.({
 				timestamp: Date.now(),
 				content: message.join(' '),
@@ -262,7 +259,6 @@ export default class FNLB {
 	private warn(...message: any[]) {
 		if (!this.config?.disableErrorLogs) {
 			console.warn('[FNLB ShardingManager] [WRN]', ...message);
-
 			this.config?.onLogMessage?.({
 				timestamp: Date.now(),
 				content: message.join(' '),
@@ -274,7 +270,6 @@ export default class FNLB {
 	private error(...message: any[]) {
 		if (!this.config?.disableErrorLogs) {
 			console.error('[FNLB ShardingManager] [ERR]', ...message);
-
 			this.config?.onLogMessage?.({
 				timestamp: Date.now(),
 				content: message.join(' '),

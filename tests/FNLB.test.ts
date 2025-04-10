@@ -107,6 +107,31 @@ describe('FNLB', () => {
 			expect(fnlb.start(config)).rejects.toThrow('[FNLB ShardingManager] Please provide a valid FNLB API token.');
 		}, 20000);
 
+		it('should handle stop() and start() correctly', async () => {
+			const logMessages: LogsMessage[] = [];
+
+			fnlb = new FNLB({
+				onLogMessage: (msg) => logMessages.push(msg)
+			});
+
+			const config: StartConfig = { apiToken: apiToken, numberOfShards: 1 };
+
+			await fnlb.start(config);
+			await sleep(10_000);
+
+			expect(fnlb['activeProcesses'].size).toBe(1);
+
+			await fnlb.stop();
+			await fnlb.start(config);
+
+			await sleep(10_000);
+
+			expect(fnlb['activeProcesses'].size).toBe(1);
+			const errorMsg = logMessages.find((m) => m.format === LogsMessageFormat.Error);
+
+			expect(errorMsg).not.toBeDefined();
+		}, 30000);
+
 		it('should start a single shard process', async () => {
 			fnlb = new FNLB({ disableLogs: true });
 			const config: StartConfig = { apiToken: apiToken, numberOfShards: 1 };
