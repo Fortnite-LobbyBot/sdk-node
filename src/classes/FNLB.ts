@@ -12,6 +12,7 @@ export default class FNLB {
 	private readonly config?: FNLBConfig;
 	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
 	private readonly packageName = `${process.versions['bun'] ? 'zenith-bun' : 'zenith'}`;
+	private readonly fnlbDir: string;
 
 	private isLoaded = false;
 	private shouldRestart = true;
@@ -19,6 +20,7 @@ export default class FNLB {
 
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
+		this.fnlbDir = config?.fnlbPath ? pathResolve(config?.fnlbPath, '.fnlb') : pathResolve(process.cwd(), '.fnlb');
 	}
 
 	public async start(config: StartConfig) {
@@ -67,7 +69,7 @@ export default class FNLB {
 
 		this.log('Starting shard with ID:', id);
 
-		const ps = fork(`./.fnlb/${this.packageName}.mjs`, [], {
+		const ps = fork(pathResolve(this.fnlbDir, `${this.packageName}.mjs`), [], {
 			env: {
 				...process.env,
 				FORCE_COLOR: '1',
@@ -84,7 +86,8 @@ export default class FNLB {
 						.replace(/ +(?= )/g, '')
 						.toLowerCase()
 						.replaceAll(' ', '-') ?? 'unknown',
-				CLUSTER_NAME: this.config?.clusterName?.trim()
+				CLUSTER_NAME: this.config?.clusterName?.trim(),
+				FNLB_DIR: this.fnlbDir
 			},
 			stdio: ['inherit', 'pipe', 'pipe', 'ipc']
 		});
@@ -136,7 +139,7 @@ export default class FNLB {
 	public async update() {
 		if (this.isLoaded) return;
 
-		const filePath = pathResolve(`./.fnlb/${this.packageName}.mjs`);
+		const filePath = pathResolve(this.fnlbDir, `${this.packageName}.mjs`);
 		const file = await readFile(filePath, 'utf-8').catch(() => null);
 
 		const maxDownloadRetries = this.config?.maxDownloadRetries || Infinity;
@@ -206,7 +209,10 @@ export default class FNLB {
 
 				if (downloadedHash !== data.hash) throw new Error('Downloaded file hash mismatch...');
 
-				await mkdir('.fnlb', { recursive: true });
+				await mkdir(this.fnlbDir, { recursive: true }).catch(() => {
+					throw new Error(`Failed to create the .fnlb directory on ${this.fnlbDir}`);
+				});
+
 				await writeFile(filePath, release);
 
 				this.isLoaded = true;

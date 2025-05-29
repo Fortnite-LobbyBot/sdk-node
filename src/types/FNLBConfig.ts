@@ -3,6 +3,8 @@ import type { LogsMessage } from './LogsMessage';
 export interface FNLBConfig {
 	clusterName?: string;
 
+	fnlbPath?: string;
+
 	onLogMessage?: (message: LogsMessage) => any;
 	onSubProcessLogMessage?: (message: LogsMessage) => any;
 
