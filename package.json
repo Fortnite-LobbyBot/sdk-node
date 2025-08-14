@@ -5,7 +5,7 @@
 	"main": "dist/index.js",
 	"homepage": "https://fnlb.net",
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.0.0",
 		"@types/bun": "^1.2.8",
 		"bun-plugin-dts": "^0.3.0"
 	},
