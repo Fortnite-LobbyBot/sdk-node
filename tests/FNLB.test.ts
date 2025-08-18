@@ -61,7 +61,7 @@ describe('FNLB', () => {
 
 			expect(existsSync(packagePath)).toBe(true);
 
-			expect(fnlb['isLoaded']).toBe(true);
+			expect(fnlb['updater']['isLoaded']).toBe(true);
 		}, 20000);
 
 		it('should use the existing package if already present and up-to-date', async () => {
@@ -78,7 +78,7 @@ describe('FNLB', () => {
 
 			expect(existsSync(packagePath)).toBe(true);
 
-			expect(fnlb2['isLoaded']).toBe(true);
+			expect(fnlb2['updater']['isLoaded']).toBe(true);
 
 			const successMsg = logMessages.find(
 				(m) => m.format === LogsMessageFormat.Success && m.content.includes('is up to date')
