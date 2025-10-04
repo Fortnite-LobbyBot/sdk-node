@@ -11,4 +11,5 @@ export interface StartConfig {
 	hideUsernames?: boolean;
 	hideEmails?: boolean;
 	logLevel?: LogLevel;
+	extraEnv?: Record<string, string>;
 }

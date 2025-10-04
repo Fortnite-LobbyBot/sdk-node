@@ -1,12 +1,12 @@
 {
 	"name": "fnlb",
-	"version": "1.1.13",
+	"version": "1.1.14",
 	"author": "FNLB",
 	"main": "dist/index.js",
 	"homepage": "https://fnlb.net",
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.0",
-		"@types/bun": "^1.2.20",
+		"@biomejs/biome": "^2.2.5",
+		"@types/bun": "^1.2.23",
 		"bun-plugin-dts": "^0.3.0"
 	},
 	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
@@ -37,6 +37,6 @@
 	"type": "module",
 	"types": "dist/index.d.ts",
 	"dependencies": {
-		"@fnlb-project/shared": "^1.5.67"
+		"@fnlb-project/shared": "^1.5.74"
 	}
 }

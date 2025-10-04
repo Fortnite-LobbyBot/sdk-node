@@ -98,7 +98,8 @@ export default class FNLB {
 						.toLowerCase()
 						.replaceAll(' ', '-') ?? 'unknown',
 				CLUSTER_NAME: this.config?.clusterName?.trim(),
-				FNLB_DIR: this.fnlbDir
+				FNLB_DIR: this.fnlbDir,
+				...config.extraEnv
 			},
 			stdio: ['inherit', 'pipe', 'pipe', 'ipc']
 		});
