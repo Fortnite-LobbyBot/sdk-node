@@ -7,7 +7,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
 		"@types/bun": "^1.2.23",
-		"bun-plugin-dts": "^0.3.0"
+		"bun-plugin-dts": "^0.4.0"
 	},
 	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
 	"files": [
