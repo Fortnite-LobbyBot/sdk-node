@@ -15,4 +15,7 @@ export interface FNLBConfig {
 
 	maxDownloadRetries?: number;
 	maxBackoffMs?: number;
+
+	channel?: 'stable' | 'beta' | 'dev';
+	updateIntervalMs?: number;
 }

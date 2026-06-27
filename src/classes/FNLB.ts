@@ -1,6 +1,6 @@
 import { fork } from 'node:child_process';
 import { resolve as pathResolve } from 'node:path';
-import { AutoUpdater } from '@fnlb-project/shared/updater';
+import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS } from '@fnlb-project/shared/updater';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
 import type { StartConfig } from '../types/StartConfig';
@@ -11,7 +11,8 @@ export default class FNLB {
 	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
 	private readonly packageName = `${process.versions['bun'] ? 'zenith-bun' : 'zenith'}`;
 	private readonly fnlbDir: string;
-	private readonly updater: AutoUpdater;
+	private updater!: AutoUpdater;
+	private lastChannel?: string;
 
 	private shouldRestart = true;
 	private runId = 0;
@@ -19,19 +20,26 @@ export default class FNLB {
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
 		this.fnlbDir = config?.fnlbPath ? pathResolve(config?.fnlbPath, '.fnlb') : pathResolve(process.cwd(), '.fnlb');
+		this.setupUpdater(config?.channel ?? 'stable');
+	}
+
+	private setupUpdater(channel: string) {
 		this.updater = new AutoUpdater({
 			storageDir: this.fnlbDir,
 			targetFileName: `${this.packageName}.mjs`,
 			displayName: 'FNLB',
-			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release`,
+			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}`,
+			releasePublicKeys: FNLB_RELEASE_PUBLIC_KEYS,
+			trustedDownloadOrigin: 'https://cdn.fnlb.net',
 			maxDownloadRetries: this.config?.maxDownloadRetries ?? Infinity,
 			maxBackoffMs: this.config?.maxBackoffMs ?? 60_000,
-			staleMs: 3_600_000,
+			staleMs: this.config?.updateIntervalMs ?? 3_600_000,
 			log: (...m) => this.log(...m),
 			success: (...m) => this.success(...m),
 			warn: (...m) => this.warn(...m),
 			error: (...m) => this.error(...m)
 		});
+		this.lastChannel = channel;
 	}
 
 	public async start(config: StartConfig) {
@@ -42,7 +50,13 @@ export default class FNLB {
 
 		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
 
-		await this.update();
+		const channel = config.channel ?? this.config?.channel ?? 'stable';
+		if (channel !== this.lastChannel) {
+			this.setupUpdater(channel);
+			await this.update(true);
+		} else {
+			await this.update();
+		}
 
 		const numberOfShards = config.numberOfShards ?? 1;
 		const prefix = (~~(Math.random() * 10000)).toString(36) + 'fnlb' + (~~(Date.now() / 1000)).toString(36);
@@ -73,8 +87,6 @@ export default class FNLB {
 	}
 
 	public async startShard(config: StartConfig, id: string, currentRunId: number) {
-		await this.update();
-
 		if (!config?.apiToken || config.apiToken.length < 10)
 			throw new Error('[FNLB ShardingManager] Please provide a valid FNLB API token.');
 

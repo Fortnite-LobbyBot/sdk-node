@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { type ChildProcess } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { resolve as pathResolve } from 'node:path';
@@ -315,5 +315,103 @@ describe('FNLB', () => {
 				expect([LogsMessageFormat.Neutral, LogsMessageFormat.Error]).toContain(subProcessMessages[0]!.format);
 			}
 		}, 30000);
+	});
+
+	describe('Channel & Update Logic', () => {
+		it('should use the channel from StartConfig and trigger a forced update if it changes', async () => {
+			fnlb = new FNLB({ disableLogs: true });
+			expect(fnlb['lastChannel']).toBe('stable');
+			expect((fnlb['updater'] as any).releaseUrl).toContain('channel=stable');
+
+			await fnlb.start({ apiToken: apiToken, channel: 'dev' });
+
+			expect(fnlb['lastChannel']).toBe('dev');
+			expect((fnlb['updater'] as any).releaseUrl).toContain('channel=dev');
+
+			await fnlb.stop();
+		}, 30000);
+
+		it('should respect updateIntervalMs (caching)', async () => {
+			const logMessages: LogsMessage[] = [];
+			fnlb = new FNLB({
+				onLogMessage: (msg) => logMessages.push(msg),
+				updateIntervalMs: 100_000
+			});
+
+			await fnlb.start({ apiToken: apiToken });
+			const firstCheck = logMessages.some(
+				(m) => m.content.includes('Checking for updates') || m.content.includes('Downloading FNLB')
+			);
+			expect(firstCheck).toBe(true);
+			logMessages.length = 0;
+
+			await fnlb.stop();
+			await fnlb.start({ apiToken: apiToken });
+			const secondCheck = logMessages.some(
+				(m) => m.content.includes('Checking for updates') || m.content.includes('Downloading FNLB')
+			);
+			expect(secondCheck).toBe(false);
+
+			await fnlb.stop();
+		}, 40000);
+
+		it('should invalidate cache if channel changes', async () => {
+			const logMessages: LogsMessage[] = [];
+			fnlb = new FNLB({
+				onLogMessage: (msg) => logMessages.push(msg),
+				updateIntervalMs: 100_000
+			});
+
+			await fnlb.start({ apiToken: apiToken, channel: 'stable' });
+			logMessages.length = 0;
+
+			await fnlb.stop();
+			await fnlb.start({ apiToken: apiToken, channel: 'dev' });
+			const checkAfterChange = logMessages.some(
+				(m) => m.content.includes('Checking for updates') || m.content.includes('Downloading FNLB')
+			);
+			expect(checkAfterChange).toBe(true);
+
+			await fnlb.stop();
+		}, 40000);
+
+		it('should handle multiple channel switches', async () => {
+			fnlb = new FNLB({ disableLogs: true });
+
+			await fnlb.start({ apiToken: apiToken, channel: 'dev' });
+			expect(fnlb['lastChannel']).toBe('dev');
+
+			await fnlb.stop();
+			await fnlb.start({ apiToken: apiToken, channel: 'stable' });
+			expect(fnlb['lastChannel']).toBe('stable');
+
+			await fnlb.stop();
+			await fnlb.start({ apiToken: apiToken, channel: 'dev' });
+			expect(fnlb['lastChannel']).toBe('dev');
+
+			await fnlb.stop();
+		}, 60000);
+
+		it('should force update check when force is true', async () => {
+			const logMessages: LogsMessage[] = [];
+			fnlb = new FNLB({
+				onLogMessage: (msg) => logMessages.push(msg),
+				updateIntervalMs: 1_000_000
+			});
+
+			await fnlb.update();
+			logMessages.length = 0;
+
+			await fnlb.update(true);
+			const forcedCheck = logMessages.some(
+				(m) => m.content.includes('Checking for updates') || m.content.includes('Downloading FNLB')
+			);
+			expect(forcedCheck).toBe(true);
+		}, 20000);
+
+		it('should default to 1 hour update interval if not provided', () => {
+			fnlb = new FNLB();
+			expect((fnlb['updater'] as any).staleMs).toBe(3_600_000);
+		});
 	});
 });
