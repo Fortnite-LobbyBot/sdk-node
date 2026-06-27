@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
 	"files": {
 		"ignoreUnknown": true,
 		"includes": ["src/**/*", "tests/**/*", "biome.json", "package.json", "tsconfig.json"]
@@ -32,7 +32,7 @@
 	"linter": {
 		"enabled": false,
 		"rules": {
-			"recommended": true
+			"preset": "recommended"
 		}
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } }
