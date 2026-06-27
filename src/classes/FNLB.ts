@@ -48,7 +48,8 @@ export default class FNLB {
 		this.runId++;
 		const currentRunId = this.runId;
 
-		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
+		const authToken = this.resolveAuthToken(config);
+		if (!authToken) throw new Error('[FNLB ShardingManager] Please provide an auth token.');
 
 		const channel = config.channel ?? this.config?.channel ?? 'stable';
 		if (channel !== this.lastChannel) {
@@ -63,7 +64,7 @@ export default class FNLB {
 
 		for (let i = 0; i < numberOfShards; i++) {
 			const id = `${prefix}-${i.toString().padStart(2, '0')}`;
-			const processInstance = await this.startShard(config, id, currentRunId);
+			const processInstance = await this.startShard(config, id, currentRunId, authToken);
 			this.activeProcesses.set(id, processInstance);
 		}
 	}
@@ -86,9 +87,11 @@ export default class FNLB {
 		this.log('All shards stopped.');
 	}
 
-	public async startShard(config: StartConfig, id: string, currentRunId: number) {
-		if (!config?.apiToken || config.apiToken.length < 10)
-			throw new Error('[FNLB ShardingManager] Please provide a valid FNLB API token.');
+	public async startShard(config: StartConfig, id: string, currentRunId: number, authToken?: string) {
+		const resolvedAuthToken = authToken ?? this.resolveAuthToken(config);
+		if (!resolvedAuthToken || resolvedAuthToken.length < 10) {
+			throw new Error('[FNLB ShardingManager] Please provide a valid auth token.');
+		}
 
 		this.log('Starting shard with ID:', id);
 
@@ -97,8 +100,9 @@ export default class FNLB {
 				...process.env,
 				FORCE_COLOR: '1',
 				SHARD_ID: id,
-				API_TOKEN: config.apiToken,
-				CATEGORIES: config.categories?.join(','),
+				API_TOKEN: resolvedAuthToken,
+				...(config.categories?.length ? { CATEGORIES: config.categories.join(',') } : {}),
+				...(config.bots?.length ? { BOTS: config.bots.join(',') } : {}),
 				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
@@ -151,7 +155,7 @@ export default class FNLB {
 
 				await this.update(true);
 				await Util.wait(10_000);
-				const restartedProcess = await this.startShard(config, id, currentRunId);
+				const restartedProcess = await this.startShard(config, id, currentRunId, resolvedAuthToken);
 				this.activeProcesses.set(id, restartedProcess);
 			} else {
 				this.log(`Shard ${id} stopped.`);
@@ -163,6 +167,11 @@ export default class FNLB {
 
 	public async update(force?: true) {
 		await this.updater.ensureUpToDate(force);
+	}
+
+	private resolveAuthToken(config: StartConfig): string | undefined {
+		const token = config.token ?? config.apiToken;
+		return token?.trim() || undefined;
 	}
 
 	private log(...message: any[]) {

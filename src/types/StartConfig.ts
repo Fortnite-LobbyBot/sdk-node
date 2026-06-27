@@ -4,8 +4,10 @@ export enum LogLevel {
 }
 
 export interface StartConfig {
-	apiToken: string;
+	apiToken?: string;
+	token?: string;
 	categories?: string[];
+	bots?: string[];
 	numberOfShards?: number;
 	botsPerShard?: number;
 	hideUsernames?: boolean;

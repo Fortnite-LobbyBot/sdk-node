@@ -92,6 +92,26 @@ await fnlb.start({
 });
 ```
 
+## 🎯 Starting Specific Bots by ID
+
+Run exact bots without filtering by category using the `bots` array. Get bot IDs from [app.fnlb.net/bots](https://app.fnlb.net/bots) → select a bot → **About this bot** → **FNLB ID**.
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB();
+
+await fnlb.start({
+    apiToken: 'your-api-token',
+    bots: ['bot-id-1', 'bot-id-2'],
+    botsPerShard: 2
+});
+```
+
+Multiple shards can share the same `bots` list, the gateway distributes IDs across shards with no duplicates. You can combine `bots` and `categories` to narrow selection further.
+
+Omit `categories` (or pass `[]`) to allow bots from any category. When `categories` is set, bots without a category are still included.
+
 ## ⛔ Stopping All Bots
 
 Shut everything down cleanly using the `stop()` method:

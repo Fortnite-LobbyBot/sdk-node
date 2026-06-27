@@ -2,6 +2,7 @@
 	"$schema": "https://json.schemastore.org/tsconfig.json",
 	"compilerOptions": {
 		"lib": ["ESNext"],
+		"types": ["node"],
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleDetection": "force",

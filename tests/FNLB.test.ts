@@ -92,20 +92,28 @@ describe('FNLB', () => {
 	});
 
 	describe('start() / stop()', () => {
-		it('should throw an error if apiToken is missing', async () => {
+		it('should throw an error if auth token is missing', async () => {
 			fnlb = new FNLB({ disableLogs: true });
 			const config = {} as StartConfig;
-			expect(fnlb.start(config)).rejects.toThrow('[FNLB ShardingManager] Please provide a FNLB API token.');
+			expect(fnlb.start(config)).rejects.toThrow('[FNLB ShardingManager] Please provide an auth token.');
 		});
 
-		it('should throw an error if apiToken is too short', async () => {
+		it('should throw an error if auth token is too short', async () => {
 			fnlb = new FNLB({ disableLogs: true });
 			const config: StartConfig = { apiToken: 'short' };
 
 			await fnlb.update();
 
-			expect(fnlb.start(config)).rejects.toThrow('[FNLB ShardingManager] Please provide a valid FNLB API token.');
+			expect(fnlb.start(config)).rejects.toThrow('[FNLB ShardingManager] Please provide a valid auth token.');
 		}, 20000);
+
+		it('should accept token alias instead of apiToken', async () => {
+			fnlb = new FNLB({ disableLogs: true });
+			await fnlb.update();
+
+			expect(fnlb['resolveAuthToken']({ token: apiToken })).toBe(apiToken);
+			expect(fnlb['resolveAuthToken']({ token: apiToken, apiToken: 'ignored' })).toBe(apiToken);
+		});
 
 		it('should handle stop() and start() correctly', async () => {
 			const logMessages: LogsMessage[] = [];
