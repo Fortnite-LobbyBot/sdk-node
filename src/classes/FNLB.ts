@@ -1,6 +1,6 @@
 import { fork } from 'node:child_process';
 import { resolve as pathResolve } from 'node:path';
-import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS } from '@fnlb-project/shared/updater';
+import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS, FNLB_TRUSTED_DOWNLOAD_ORIGIN } from '@fnlb-project/shared/updater';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
 import type { StartConfig } from '../types/StartConfig';
@@ -30,7 +30,7 @@ export default class FNLB {
 			displayName: 'FNLB',
 			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}`,
 			releasePublicKeys: FNLB_RELEASE_PUBLIC_KEYS,
-			trustedDownloadOrigin: 'https://cdn.fnlb.net',
+			trustedDownloadOrigin: FNLB_TRUSTED_DOWNLOAD_ORIGIN,
 			maxDownloadRetries: this.config?.maxDownloadRetries ?? Infinity,
 			maxBackoffMs: this.config?.maxBackoffMs ?? 60_000,
 			staleMs: this.config?.updateIntervalMs ?? 3_600_000,

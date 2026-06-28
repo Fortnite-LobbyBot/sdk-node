@@ -38,6 +38,6 @@
 	"type": "module",
 	"types": "dist/index.d.ts",
 	"dependencies": {
-		"@fnlb-project/shared": "^1.5.138"
+		"@fnlb-project/shared": "^1.5.142"
 	}
 }
