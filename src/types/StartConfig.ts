@@ -14,5 +14,6 @@ export interface StartConfig {
 	hideEmails?: boolean;
 	logLevel?: LogLevel;
 	channel?: 'stable' | 'beta' | 'dev';
+	overrideVersion?: string;
 	extraEnv?: Record<string, string>;
 }

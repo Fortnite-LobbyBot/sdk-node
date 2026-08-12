@@ -6,6 +6,9 @@ import { LogsMessageFormat } from '../types/LogsMessage';
 import type { StartConfig } from '../types/StartConfig';
 import { Util } from './Util';
 
+const RELEASE_CHANNELS = ['stable', 'beta', 'dev'] as const;
+const RELEASE_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
 export default class FNLB {
 	private readonly config?: FNLBConfig;
 	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
@@ -13,6 +16,7 @@ export default class FNLB {
 	private readonly fnlbDir: string;
 	private updater!: AutoUpdater;
 	private lastChannel?: string;
+	private lastOverrideVersion?: string;
 
 	private shouldRestart = true;
 	private runId = 0;
@@ -20,15 +24,30 @@ export default class FNLB {
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
 		this.fnlbDir = config?.fnlbPath ? pathResolve(config?.fnlbPath, '.fnlb') : pathResolve(process.cwd(), '.fnlb');
-		this.setupUpdater(config?.channel ?? 'stable');
+		this.setupUpdater(config?.channel ?? 'stable', config?.overrideVersion);
 	}
 
-	private setupUpdater(channel: string) {
+	private setupUpdater(channel: string, overrideVersion?: string) {
+		if (!RELEASE_CHANNELS.includes(channel as (typeof RELEASE_CHANNELS)[number])) {
+			throw new Error(`Invalid release channel "${channel}". Expected one of: ${RELEASE_CHANNELS.join(', ')}.`);
+		}
+
+		const normalizedOverrideVersion = overrideVersion?.trim();
+		if (normalizedOverrideVersion && !RELEASE_VERSION_PATTERN.test(normalizedOverrideVersion)) {
+			throw new Error(
+				`Invalid release version "${overrideVersion}". Expected a semantic version such as 2.0.217-xmms.`
+			);
+		}
+
+		const versionQuery = normalizedOverrideVersion
+			? `&version=${encodeURIComponent(normalizedOverrideVersion)}`
+			: '';
+
 		this.updater = new AutoUpdater({
 			storageDir: this.fnlbDir,
 			targetFileName: `${this.packageName}.mjs`,
 			displayName: 'FNLB',
-			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}`,
+			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}${versionQuery}`,
 			releasePublicKeys: FNLB_RELEASE_PUBLIC_KEYS,
 			trustedDownloadOrigin: FNLB_TRUSTED_DOWNLOAD_ORIGIN,
 			maxDownloadRetries: this.config?.maxDownloadRetries ?? Infinity,
@@ -40,6 +59,7 @@ export default class FNLB {
 			error: (...m) => this.error(...m)
 		});
 		this.lastChannel = channel;
+		this.lastOverrideVersion = normalizedOverrideVersion;
 	}
 
 	public async start(config: StartConfig) {
@@ -52,8 +72,9 @@ export default class FNLB {
 		if (!authToken) throw new Error('[FNLB ShardingManager] Please provide an auth token.');
 
 		const channel = config.channel ?? this.config?.channel ?? 'stable';
-		if (channel !== this.lastChannel) {
-			this.setupUpdater(channel);
+		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
+		if (channel !== this.lastChannel || overrideVersion !== this.lastOverrideVersion) {
+			this.setupUpdater(channel, overrideVersion);
 			await this.update(true);
 		} else {
 			await this.update();
@@ -93,6 +114,9 @@ export default class FNLB {
 			throw new Error('[FNLB ShardingManager] Please provide a valid auth token.');
 		}
 
+		const channel = config.channel ?? this.config?.channel ?? 'stable';
+		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
+
 		this.log('Starting shard with ID:', id);
 
 		const ps = fork(pathResolve(this.fnlbDir, `${this.packageName}.mjs`), [], {
@@ -107,6 +131,8 @@ export default class FNLB {
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
 				LOG_LEVEL: config.logLevel,
+				CHANNEL: channel,
+				...(overrideVersion ? { OVERRIDE_VERSION: overrideVersion } : {}),
 				CLUSTER_ID:
 					this.config?.clusterName
 						?.trim()

@@ -339,6 +339,19 @@ describe('FNLB', () => {
 			await fnlb.stop();
 		}, 30000);
 
+		it('should append a version override only when configured', () => {
+			fnlb = new FNLB({ disableLogs: true });
+			expect((fnlb['updater'] as any).releaseUrl).toBe(
+				`https://dist.fnlb.net/packages/${packageName}/release?channel=stable`
+			);
+
+			const overrideVersion = '2.0.210-xfix';
+			const overridden = new FNLB({ disableLogs: true, overrideVersion });
+			expect((overridden['updater'] as any).releaseUrl).toBe(
+				`https://dist.fnlb.net/packages/${packageName}/release?channel=stable&version=${overrideVersion}`
+			);
+		});
+
 		it('should respect updateIntervalMs (caching)', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({

@@ -17,5 +17,6 @@ export interface FNLBConfig {
 	maxBackoffMs?: number;
 
 	channel?: 'stable' | 'beta' | 'dev';
+	overrideVersion?: string;
 	updateIntervalMs?: number;
 }
