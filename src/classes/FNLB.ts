@@ -1,24 +1,65 @@
 import { fork } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve as pathResolve } from 'node:path';
-import { Util } from './Util';
-
+import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS, FNLB_TRUSTED_DOWNLOAD_ORIGIN } from '@fnlb-project/shared/updater';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
 import type { StartConfig } from '../types/StartConfig';
+import { Util } from './Util';
+
+const RELEASE_CHANNELS = ['stable', 'beta', 'dev'] as const;
+const RELEASE_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 export default class FNLB {
 	private readonly config?: FNLBConfig;
 	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
 	private readonly packageName = `${process.versions['bun'] ? 'zenith-bun' : 'zenith'}`;
+	private readonly fnlbDir: string;
+	private updater!: AutoUpdater;
+	private lastChannel?: string;
+	private lastOverrideVersion?: string;
 
-	private isLoaded = false;
 	private shouldRestart = true;
 	private runId = 0;
 
 	public constructor(config?: FNLBConfig) {
 		this.config = config;
+		this.fnlbDir = config?.fnlbPath ? pathResolve(config?.fnlbPath, '.fnlb') : pathResolve(process.cwd(), '.fnlb');
+		this.setupUpdater(config?.channel ?? 'stable', config?.overrideVersion);
+	}
+
+	private setupUpdater(channel: string, overrideVersion?: string) {
+		if (!RELEASE_CHANNELS.includes(channel as (typeof RELEASE_CHANNELS)[number])) {
+			throw new Error(`Invalid release channel "${channel}". Expected one of: ${RELEASE_CHANNELS.join(', ')}.`);
+		}
+
+		const normalizedOverrideVersion = overrideVersion?.trim();
+		if (normalizedOverrideVersion && !RELEASE_VERSION_PATTERN.test(normalizedOverrideVersion)) {
+			throw new Error(
+				`Invalid release version "${overrideVersion}". Expected a semantic version such as 2.0.217-xmms.`
+			);
+		}
+
+		const versionQuery = normalizedOverrideVersion
+			? `&version=${encodeURIComponent(normalizedOverrideVersion)}`
+			: '';
+
+		this.updater = new AutoUpdater({
+			storageDir: this.fnlbDir,
+			targetFileName: `${this.packageName}.mjs`,
+			displayName: 'FNLB',
+			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}${versionQuery}`,
+			releasePublicKeys: FNLB_RELEASE_PUBLIC_KEYS,
+			trustedDownloadOrigin: FNLB_TRUSTED_DOWNLOAD_ORIGIN,
+			maxDownloadRetries: this.config?.maxDownloadRetries ?? Infinity,
+			maxBackoffMs: this.config?.maxBackoffMs ?? 60_000,
+			staleMs: this.config?.updateIntervalMs ?? 3_600_000,
+			log: (...m) => this.log(...m),
+			success: (...m) => this.success(...m),
+			warn: (...m) => this.warn(...m),
+			error: (...m) => this.error(...m)
+		});
+		this.lastChannel = channel;
+		this.lastOverrideVersion = normalizedOverrideVersion;
 	}
 
 	public async start(config: StartConfig) {
@@ -27,16 +68,24 @@ export default class FNLB {
 		this.runId++;
 		const currentRunId = this.runId;
 
-		if (!config?.apiToken) throw new Error('[FNLB ShardingManager] Please provide a FNLB API token.');
+		const authToken = this.resolveAuthToken(config);
+		if (!authToken) throw new Error('[FNLB ShardingManager] Please provide an auth token.');
 
-		await this.update();
+		const channel = config.channel ?? this.config?.channel ?? 'stable';
+		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
+		if (channel !== this.lastChannel || overrideVersion !== this.lastOverrideVersion) {
+			this.setupUpdater(channel, overrideVersion);
+			await this.update(true);
+		} else {
+			await this.update();
+		}
 
 		const numberOfShards = config.numberOfShards ?? 1;
 		const prefix = (~~(Math.random() * 10000)).toString(36) + 'fnlb' + (~~(Date.now() / 1000)).toString(36);
 
 		for (let i = 0; i < numberOfShards; i++) {
 			const id = `${prefix}-${i.toString().padStart(2, '0')}`;
-			const processInstance = await this.startShard(config, id, currentRunId);
+			const processInstance = await this.startShard(config, id, currentRunId, authToken);
 			this.activeProcesses.set(id, processInstance);
 		}
 	}
@@ -59,32 +108,40 @@ export default class FNLB {
 		this.log('All shards stopped.');
 	}
 
-	public async startShard(config: StartConfig, id: string, currentRunId: number) {
-		await this.update();
+	public async startShard(config: StartConfig, id: string, currentRunId: number, authToken?: string) {
+		const resolvedAuthToken = authToken ?? this.resolveAuthToken(config);
+		if (!resolvedAuthToken || resolvedAuthToken.length < 10) {
+			throw new Error('[FNLB ShardingManager] Please provide a valid auth token.');
+		}
 
-		if (!config?.apiToken || config.apiToken.length < 10)
-			throw new Error('[FNLB ShardingManager] Please provide a valid FNLB API token.');
+		const channel = config.channel ?? this.config?.channel ?? 'stable';
+		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
 
 		this.log('Starting shard with ID:', id);
 
-		const ps = fork(`./.fnlb/${this.packageName}.mjs`, [], {
+		const ps = fork(pathResolve(this.fnlbDir, `${this.packageName}.mjs`), [], {
 			env: {
 				...process.env,
 				FORCE_COLOR: '1',
 				SHARD_ID: id,
-				API_TOKEN: config.apiToken,
-				CATEGORIES: config.categories?.join(','),
+				API_TOKEN: resolvedAuthToken,
+				...(config.categories?.length ? { CATEGORIES: config.categories.join(',') } : {}),
+				...(config.bots?.length ? { BOTS: config.bots.join(',') } : {}),
 				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
 				LOG_LEVEL: config.logLevel,
+				CHANNEL: channel,
+				...(overrideVersion ? { OVERRIDE_VERSION: overrideVersion } : {}),
 				CLUSTER_ID:
 					this.config?.clusterName
 						?.trim()
 						.replace(/ +(?= )/g, '')
 						.toLowerCase()
 						.replaceAll(' ', '-') ?? 'unknown',
-				CLUSTER_NAME: this.config?.clusterName?.trim()
+				CLUSTER_NAME: this.config?.clusterName?.trim(),
+				FNLB_DIR: this.fnlbDir,
+				...config.extraEnv
 			},
 			stdio: ['inherit', 'pipe', 'pipe', 'ipc']
 		});
@@ -122,8 +179,9 @@ export default class FNLB {
 
 				this.log('Trying to restart shard...');
 
+				await this.update(true);
 				await Util.wait(10_000);
-				const restartedProcess = await this.startShard(config, id, currentRunId);
+				const restartedProcess = await this.startShard(config, id, currentRunId, resolvedAuthToken);
 				this.activeProcesses.set(id, restartedProcess);
 			} else {
 				this.log(`Shard ${id} stopped.`);
@@ -133,105 +191,13 @@ export default class FNLB {
 		return ps;
 	}
 
-	public async update() {
-		if (this.isLoaded) return;
+	public async update(force?: true) {
+		await this.updater.ensureUpToDate(force);
+	}
 
-		const filePath = pathResolve(`./.fnlb/${this.packageName}.mjs`);
-		const file = await readFile(filePath, 'utf-8').catch(() => null);
-
-		const maxDownloadRetries = this.config?.maxDownloadRetries || Infinity;
-		const maxBackoffMs = this.config?.maxBackoffMs || 60000;
-
-		this.log(file ? 'Checking for updates...' : 'Downloading FNLB...');
-
-		const releaseURL = `https://dist.fnlb.net/packages/${this.packageName}/release`;
-		let data;
-		let attempt = 0;
-		let delay = 1000;
-
-		while (attempt < maxDownloadRetries) {
-			try {
-				const response = await fetch(releaseURL);
-				if (!response.ok) throw new Error(`Status code: ${response.status}`);
-				data = (await response.json()) as {
-					hash: string;
-					url: string;
-					version: string;
-				};
-				break;
-			} catch (error) {
-				const nextDelay = Math.min(delay * 2, maxBackoffMs);
-				attempt++;
-				this.error('Update error:', error);
-				this.warn(
-					`Check for updates attempt ${attempt} failed: ${(error as Error).message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
-				);
-				if (attempt >= maxDownloadRetries) break;
-				await new Promise((resolve) => setTimeout(resolve, delay));
-				delay = nextDelay;
-			}
-		}
-
-		if (!data) {
-			if (file) {
-				this.warn('Failed to check for updates. Using existing local version.');
-				this.isLoaded = true;
-				this.success('Loaded existing FNLB version');
-				return;
-			}
-			throw new Error(`[FNLB ShardingManager] Failed to check for updates and no local file found.`);
-		}
-
-		if (file) {
-			const hasher = createHash('sha256').update(file);
-			if (hasher.digest('hex') === data.hash) {
-				this.success(`FNLB v${data.version} is up to date`);
-				this.isLoaded = true;
-				this.success(`Finished loading FNLB v${data.version}`);
-				return;
-			}
-			this.log(`Downloading update for FNLB v${data.version}`);
-		}
-
-		attempt = 0;
-		delay = 1000;
-
-		while (attempt < maxDownloadRetries) {
-			try {
-				const downloadResponse = await fetch(data.url);
-				if (!downloadResponse.ok) throw new Error(`Download failed with status ${downloadResponse.status}`);
-
-				const release = await downloadResponse.text();
-				const downloadedHash = createHash('sha256').update(release).digest('hex');
-
-				if (downloadedHash !== data.hash) throw new Error('Downloaded file hash mismatch...');
-
-				await mkdir('.fnlb', { recursive: true });
-				await writeFile(filePath, release);
-
-				this.isLoaded = true;
-				this.success(`Finished loading FNLB v${data.version}`);
-				return;
-			} catch (error: any) {
-				const nextDelay = Math.min(delay * 2, maxBackoffMs);
-				attempt++;
-				this.error('Download error:', error);
-				this.warn(
-					`Download attempt ${attempt} failed: ${error.message}. Retrying in ${nextDelay >= 60000 ? `${~~(nextDelay / 60000)}m` : `${~~(nextDelay / 1000)}s`}...`
-				);
-				await Util.wait(delay);
-				delay = nextDelay;
-			}
-		}
-
-		if (file) {
-			this.warn('Max retries reached. Using existing local version.');
-			this.isLoaded = true;
-			this.success('Loaded existing FNLB version');
-			return;
-		}
-
-		throw new Error(`[FNLB ShardingManager] Failed to download and verify update after ${attempt} attempts`);
+	private resolveAuthToken(config: StartConfig): string | undefined {
+		const token = config.token ?? config.apiToken;
+		return token?.trim() || undefined;
 	}
 
 	private log(...message: any[]) {

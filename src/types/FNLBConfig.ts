@@ -3,6 +3,8 @@ import type { LogsMessage } from './LogsMessage';
 export interface FNLBConfig {
 	clusterName?: string;
 
+	fnlbPath?: string;
+
 	onLogMessage?: (message: LogsMessage) => any;
 	onSubProcessLogMessage?: (message: LogsMessage) => any;
 
@@ -13,4 +15,8 @@ export interface FNLBConfig {
 
 	maxDownloadRetries?: number;
 	maxBackoffMs?: number;
+
+	channel?: 'stable' | 'beta' | 'dev';
+	overrideVersion?: string;
+	updateIntervalMs?: number;
 }

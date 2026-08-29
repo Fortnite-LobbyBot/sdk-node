@@ -92,6 +92,53 @@ await fnlb.start({
 });
 ```
 
+## 🎯 Starting Specific Bots by ID
+
+Use the `bots` array to include specific bots by ID. Get bot IDs from [app.fnlb.net/bots](https://app.fnlb.net/bots) > select a bot > **About this bot** > **FNLB ID**.
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB();
+
+await fnlb.start({
+    apiToken: 'your-api-token',
+    bots: ['bot-id-1', 'bot-id-2'],
+    botsPerShard: 2
+});
+```
+
+## 🔀 Bot and Category Selection
+
+`categories` and `bots` define which bots a shard can pick from. They work as an **include list**.
+
+- **Categories only** - bots in those categories, plus unassigned bots.
+- **Bots only** - only the listed bot IDs.
+- **Both** - bots from the listed categories **or** the listed bot IDs (union).
+- **Neither** - your full bot pool.
+
+Invalid category or bot IDs are ignored at startup.
+
+Multiple shards can share the same `bots` list - the gateway distributes IDs across shards with no duplicates.
+
+Example - start bots from two categories **and** two specific bots from elsewhere:
+
+```ts
+import FNLB from 'fnlb';
+
+const fnlb = new FNLB();
+
+await fnlb.start({
+    apiToken: 'your-api-token',
+    categories: ['category-id-1', 'category-id-2'],
+    bots: ['bot-id-1', 'bot-id-2'],
+    numberOfShards: 2,
+    botsPerShard: 10
+});
+```
+
+Omit `categories` (or pass `[]`) to allow bots from any category when using `bots` alone. When `categories` is set, bots without a category are still included.
+
 ## ⛔ Stopping All Bots
 
 Shut everything down cleanly using the `stop()` method:

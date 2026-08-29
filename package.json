@@ -1,17 +1,26 @@
 {
 	"name": "fnlb",
-	"version": "1.1.6",
+	"version": "1.1.19",
 	"author": "FNLB",
 	"main": "dist/index.js",
 	"homepage": "https://fnlb.net",
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
-		"@types/bun": "^1.2.8",
+		"@biomejs/biome": "^2.5.1",
+		"@types/bun": "^1.3.14",
+		"@types/node": "^22.20.0",
 		"bun-plugin-dts": "^0.3.0"
 	},
 	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
-	"files": ["dist"],
-	"keywords": ["fnlb", "fortnite", "lobbybot", "self-host", "botlobbies"],
+	"files": [
+		"dist"
+	],
+	"keywords": [
+		"fnlb",
+		"fortnite",
+		"lobbybot",
+		"self-host",
+		"botlobbies"
+	],
 	"license": "ISC",
 	"packageManager": "bun@1.1.17",
 	"scripts": {
@@ -23,7 +32,12 @@
 		"lint:tsc": "bun tsc --noEmit",
 		"test": "bun run lint && bun test"
 	},
-	"trustedDependencies": ["@biomejs/biome"],
+	"trustedDependencies": [
+		"@biomejs/biome"
+	],
 	"type": "module",
-	"types": "dist/index.d.ts"
+	"types": "dist/index.d.ts",
+	"dependencies": {
+		"@fnlb-project/shared": "^1.5.162"
+	}
 }

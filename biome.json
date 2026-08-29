@@ -1,13 +1,11 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.8.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
 	"files": {
 		"ignoreUnknown": true,
-		"ignore": ["node_modules/", ".fnlb/", "dist/"]
+		"includes": ["src/**/*", "tests/**/*", "biome.json", "package.json", "tsconfig.json"]
 	},
 	"formatter": {
 		"enabled": true,
-		"formatWithErrors": false,
-		"ignore": ["**/node_modules/", "**/.fnlb/", "**/dist/"],
 		"indentStyle": "tab",
 		"indentWidth": 4,
 		"lineEnding": "lf",
@@ -33,10 +31,9 @@
 	},
 	"linter": {
 		"enabled": false,
-		"ignore": ["**/node_modules/", "**/.fnlb/", "**/dist/"],
-		"rules": {}
+		"rules": {
+			"preset": "recommended"
+		}
 	},
-	"organizeImports": {
-		"enabled": true
-	}
+	"assist": { "actions": { "source": { "organizeImports": "on" } } }
 }
