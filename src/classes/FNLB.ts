@@ -22,8 +22,9 @@ type SelectionSetMessage = {
 	overrideCategoryConfig?: CategoryConfigOverrides;
 };
 
-const normalizeIds = (ids: string[]): string[] =>
-	[...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))];
+const normalizeIds = (ids: string[]): string[] => [
+	...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))
+];
 
 const cloneOverrides = (value?: CategoryConfigOverrides): CategoryConfigOverrides | undefined => {
 	if (!value) return undefined;
@@ -216,7 +217,11 @@ export default class FNLB {
 			...(this.categoryConfigOverrides ?? {}),
 			categories: omitOverrideKeys(this.categoryConfigOverrides?.categories, toRemove)
 		};
-		if (!this.categoryConfigOverrides.all && !this.categoryConfigOverrides.categories && !this.categoryConfigOverrides.bots) {
+		if (
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
 			this.categoryConfigOverrides = undefined;
 		}
 
@@ -240,7 +245,9 @@ export default class FNLB {
 				categories: categoriesMap
 			};
 		} else if (override) {
-			this.warn('setCategories(undefined, override) ignored override; unrestricted categories have no id targets.');
+			this.warn(
+				'setCategories(undefined, override) ignored override; unrestricted categories have no id targets.'
+			);
 		}
 
 		if (
@@ -288,7 +295,11 @@ export default class FNLB {
 			...(this.categoryConfigOverrides ?? {}),
 			bots: omitOverrideKeys(this.categoryConfigOverrides?.bots, toRemove)
 		};
-		if (!this.categoryConfigOverrides.all && !this.categoryConfigOverrides.categories && !this.categoryConfigOverrides.bots) {
+		if (
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
 			this.categoryConfigOverrides = undefined;
 		}
 

@@ -8,7 +8,11 @@
 		"@biomejs/biome": "^2.5.11",
 		"@types/bun": "^1.4.0",
 		"@types/node": "^26.4.1",
-		"bun-plugin-dts": "^0.3.0"
+		"bun-plugin-dts": "^0.3.0",
+		"typescript": "^6.0.3"
+	},
+	"overrides": {
+		"typescript": "^6.0.3"
 	},
 	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
 	"files": [

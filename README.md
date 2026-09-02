@@ -8,7 +8,7 @@ npm install fnlb@latest
 bun install fnlb@latest
 ```
 
-You need **Node.js 22+** or [Bun](https://bun.sh), and an [API token](https://app.fnlb.net/account) from your FNLB account.
+You need [Node.js 22+](https://nodejs.org/en/download) or [Bun](https://bun.sh/get), and an [API token](https://app.fnlb.net/account) from your FNLB account.
 
 ## Start your first bot
 
