@@ -1,13 +1,64 @@
 import { fork } from 'node:child_process';
 import { resolve as pathResolve } from 'node:path';
+import type { ICategoryConfig } from '@fnlb-project/shared/types';
 import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS, FNLB_TRUSTED_DOWNLOAD_ORIGIN } from '@fnlb-project/shared/updater';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
-import type { StartConfig } from '../types/StartConfig';
+import type { CategoryConfigOverrides, StartConfig } from '../types/StartConfig';
 import { Util } from './Util';
 
 const RELEASE_CHANNELS = ['stable', 'beta', 'dev'] as const;
 const RELEASE_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+type SelectionState = {
+	categories?: string[];
+	bots?: string[];
+};
+
+type SelectionSetMessage = {
+	type: 'selection:set';
+	categories?: string[];
+	bots?: string[];
+	overrideCategoryConfig?: CategoryConfigOverrides;
+};
+
+const normalizeIds = (ids: string[]): string[] => [
+	...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))
+];
+
+const cloneOverrides = (value?: CategoryConfigOverrides): CategoryConfigOverrides | undefined => {
+	if (!value) return undefined;
+	const next: CategoryConfigOverrides = {};
+	if (value.all) next.all = { ...value.all };
+	if (value.categories) next.categories = { ...value.categories };
+	if (value.bots) next.bots = { ...value.bots };
+	return next.all || next.categories || next.bots ? next : undefined;
+};
+
+const mergeOverridesForIds = (
+	map: Record<string, Partial<ICategoryConfig>> | undefined,
+	ids: string[],
+	override: Partial<ICategoryConfig>
+): Record<string, Partial<ICategoryConfig>> => {
+	const next = { ...(map ?? {}) };
+	for (const id of ids) {
+		next[id] = { ...(next[id] ?? {}), ...override };
+	}
+	return next;
+};
+
+const omitOverrideKeys = (
+	map: Record<string, Partial<ICategoryConfig>> | undefined,
+	ids: string[]
+): Record<string, Partial<ICategoryConfig>> | undefined => {
+	if (!map) return undefined;
+	const remove = new Set(ids);
+	const next: Record<string, Partial<ICategoryConfig>> = {};
+	for (const [id, value] of Object.entries(map)) {
+		if (!remove.has(id)) next[id] = value;
+	}
+	return Object.keys(next).length > 0 ? next : undefined;
+};
 
 export default class FNLB {
 	private readonly config?: FNLBConfig;
@@ -17,6 +68,9 @@ export default class FNLB {
 	private updater!: AutoUpdater;
 	private lastChannel?: string;
 	private lastOverrideVersion?: string;
+	private selection: SelectionState = {};
+	private categoryConfigOverrides?: CategoryConfigOverrides;
+	private lastStartConfig?: StartConfig;
 
 	private shouldRestart = true;
 	private runId = 0;
@@ -48,6 +102,7 @@ export default class FNLB {
 			targetFileName: `${this.packageName}.mjs`,
 			displayName: 'FNLB',
 			releaseUrl: `https://dist.fnlb.net/packages/${this.packageName}/release?channel=${encodeURIComponent(channel)}${versionQuery}`,
+			currentVersion: normalizedOverrideVersion,
 			releasePublicKeys: FNLB_RELEASE_PUBLIC_KEYS,
 			trustedDownloadOrigin: FNLB_TRUSTED_DOWNLOAD_ORIGIN,
 			maxDownloadRetries: this.config?.maxDownloadRetries ?? Infinity,
@@ -80,12 +135,24 @@ export default class FNLB {
 			await this.update();
 		}
 
+		this.selection = {
+			categories: config.categories?.length ? normalizeIds(config.categories) : undefined,
+			bots: config.bots?.length ? normalizeIds(config.bots) : undefined
+		};
+		this.categoryConfigOverrides = cloneOverrides(config.overrideCategoryConfig);
+		this.lastStartConfig = {
+			...config,
+			categories: this.selection.categories,
+			bots: this.selection.bots,
+			overrideCategoryConfig: this.categoryConfigOverrides
+		};
+
 		const numberOfShards = config.numberOfShards ?? 1;
 		const prefix = (~~(Math.random() * 10000)).toString(36) + 'fnlb' + (~~(Date.now() / 1000)).toString(36);
 
 		for (let i = 0; i < numberOfShards; i++) {
 			const id = `${prefix}-${i.toString().padStart(2, '0')}`;
-			const processInstance = await this.startShard(config, id, currentRunId, authToken);
+			const processInstance = await this.startShard(this.lastStartConfig, id, currentRunId, authToken);
 			this.activeProcesses.set(id, processInstance);
 		}
 	}
@@ -108,6 +175,170 @@ export default class FNLB {
 		this.log('All shards stopped.');
 	}
 
+	public getCategories(): string[] | undefined {
+		return this.selection.categories ? [...this.selection.categories] : undefined;
+	}
+
+	public getBots(): string[] | undefined {
+		return this.selection.bots ? [...this.selection.bots] : undefined;
+	}
+
+	public addCategories(ids: string[], override?: Partial<ICategoryConfig>) {
+		this.assertRunning();
+		const toAdd = normalizeIds(ids);
+		if (toAdd.length === 0) return;
+
+		this.selection.categories = this.selection.categories
+			? normalizeIds([...this.selection.categories, ...toAdd])
+			: toAdd;
+
+		if (override) {
+			this.categoryConfigOverrides = {
+				...(this.categoryConfigOverrides ?? {}),
+				categories: mergeOverridesForIds(this.categoryConfigOverrides?.categories, toAdd, override)
+			};
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
+	public removeCategories(ids: string[]) {
+		this.assertRunning();
+		if (!this.selection.categories) return;
+
+		const toRemove = normalizeIds(ids);
+		if (toRemove.length === 0) return;
+
+		const removeSet = new Set(toRemove);
+		const next = this.selection.categories.filter((id) => !removeSet.has(id));
+		this.selection.categories = next.length > 0 ? next : undefined;
+		this.categoryConfigOverrides = {
+			...(this.categoryConfigOverrides ?? {}),
+			categories: omitOverrideKeys(this.categoryConfigOverrides?.categories, toRemove)
+		};
+		if (
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
+			this.categoryConfigOverrides = undefined;
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
+	public setCategories(ids?: string[], override?: Partial<ICategoryConfig>) {
+		this.assertRunning();
+		const next = ids?.length ? normalizeIds(ids) : undefined;
+		const previous = this.selection.categories ?? [];
+		this.selection.categories = next;
+
+		if (next) {
+			const keep = new Set(next);
+			const removed = previous.filter((id) => !keep.has(id));
+			let categoriesMap = omitOverrideKeys(this.categoryConfigOverrides?.categories, removed);
+			if (override) categoriesMap = mergeOverridesForIds(categoriesMap, next, override);
+			this.categoryConfigOverrides = {
+				...(this.categoryConfigOverrides ?? {}),
+				categories: categoriesMap
+			};
+		} else if (override) {
+			this.warn(
+				'setCategories(undefined, override) ignored override; unrestricted categories have no id targets.'
+			);
+		}
+
+		if (
+			this.categoryConfigOverrides &&
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
+			this.categoryConfigOverrides = undefined;
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
+	public addBots(ids: string[], override?: Partial<ICategoryConfig>) {
+		this.assertRunning();
+		const toAdd = normalizeIds(ids);
+		if (toAdd.length === 0) return;
+
+		this.selection.bots = this.selection.bots ? normalizeIds([...this.selection.bots, ...toAdd]) : toAdd;
+
+		if (override) {
+			this.categoryConfigOverrides = {
+				...(this.categoryConfigOverrides ?? {}),
+				bots: mergeOverridesForIds(this.categoryConfigOverrides?.bots, toAdd, override)
+			};
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
+	public removeBots(ids: string[]) {
+		this.assertRunning();
+		if (!this.selection.bots) return;
+
+		const toRemove = normalizeIds(ids);
+		if (toRemove.length === 0) return;
+
+		const removeSet = new Set(toRemove);
+		const next = this.selection.bots.filter((id) => !removeSet.has(id));
+		this.selection.bots = next.length > 0 ? next : undefined;
+		this.categoryConfigOverrides = {
+			...(this.categoryConfigOverrides ?? {}),
+			bots: omitOverrideKeys(this.categoryConfigOverrides?.bots, toRemove)
+		};
+		if (
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
+			this.categoryConfigOverrides = undefined;
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
+	public setBots(ids?: string[], override?: Partial<ICategoryConfig>) {
+		this.assertRunning();
+		const next = ids?.length ? normalizeIds(ids) : undefined;
+		const previous = this.selection.bots ?? [];
+		this.selection.bots = next;
+
+		if (next) {
+			const keep = new Set(next);
+			const removed = previous.filter((id) => !keep.has(id));
+			let botsMap = omitOverrideKeys(this.categoryConfigOverrides?.bots, removed);
+			if (override) botsMap = mergeOverridesForIds(botsMap, next, override);
+			this.categoryConfigOverrides = {
+				...(this.categoryConfigOverrides ?? {}),
+				bots: botsMap
+			};
+		} else if (override) {
+			this.warn('setBots(undefined, override) ignored override; unrestricted bots have no id targets.');
+		}
+
+		if (
+			this.categoryConfigOverrides &&
+			!this.categoryConfigOverrides.all &&
+			!this.categoryConfigOverrides.categories &&
+			!this.categoryConfigOverrides.bots
+		) {
+			this.categoryConfigOverrides = undefined;
+		}
+
+		this.syncSelectionToStartConfig();
+		this.broadcastSelection();
+	}
+
 	public async startShard(config: StartConfig, id: string, currentRunId: number, authToken?: string) {
 		const resolvedAuthToken = authToken ?? this.resolveAuthToken(config);
 		if (!resolvedAuthToken || resolvedAuthToken.length < 10) {
@@ -116,6 +347,9 @@ export default class FNLB {
 
 		const channel = config.channel ?? this.config?.channel ?? 'stable';
 		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
+		const categories = this.selection.categories ?? config.categories;
+		const bots = this.selection.bots ?? config.bots;
+		const overrideCategoryConfig = this.categoryConfigOverrides ?? config.overrideCategoryConfig;
 
 		this.log('Starting shard with ID:', id);
 
@@ -125,14 +359,15 @@ export default class FNLB {
 				FORCE_COLOR: '1',
 				SHARD_ID: id,
 				API_TOKEN: resolvedAuthToken,
-				...(config.categories?.length ? { CATEGORIES: config.categories.join(',') } : {}),
-				...(config.bots?.length ? { BOTS: config.bots.join(',') } : {}),
+				...(categories?.length ? { CATEGORIES: categories.join(',') } : {}),
+				...(bots?.length ? { BOTS: bots.join(',') } : {}),
 				BOTS_PER_SHARD: (config.botsPerShard ?? 1).toString(),
 				HIDE_USERNAMES: config.hideUsernames ? 'true' : 'false',
 				HIDE_EMAILS: config.hideEmails ? 'true' : 'false',
 				LOG_LEVEL: config.logLevel,
 				CHANNEL: channel,
 				...(overrideVersion ? { OVERRIDE_VERSION: overrideVersion } : {}),
+				...(overrideCategoryConfig ? { OVERRIDE_CATEGORY_CONFIG: JSON.stringify(overrideCategoryConfig) } : {}),
 				CLUSTER_ID:
 					this.config?.clusterName
 						?.trim()
@@ -181,7 +416,8 @@ export default class FNLB {
 
 				await this.update(true);
 				await Util.wait(10_000);
-				const restartedProcess = await this.startShard(config, id, currentRunId, resolvedAuthToken);
+				const restartConfig = this.lastStartConfig ?? config;
+				const restartedProcess = await this.startShard(restartConfig, id, currentRunId, resolvedAuthToken);
 				this.activeProcesses.set(id, restartedProcess);
 			} else {
 				this.log(`Shard ${id} stopped.`);
@@ -193,6 +429,39 @@ export default class FNLB {
 
 	public async update(force?: true) {
 		await this.updater.ensureUpToDate(force);
+	}
+
+	private assertRunning() {
+		if (this.activeProcesses.size === 0) {
+			throw new Error('[FNLB ShardingManager] No shards are running. Call start() first.');
+		}
+	}
+
+	private syncSelectionToStartConfig() {
+		if (!this.lastStartConfig) return;
+		this.lastStartConfig = {
+			...this.lastStartConfig,
+			categories: this.selection.categories,
+			bots: this.selection.bots,
+			overrideCategoryConfig: this.categoryConfigOverrides
+		};
+	}
+
+	private broadcastSelection() {
+		const message: SelectionSetMessage = {
+			type: 'selection:set',
+			categories: this.selection.categories,
+			bots: this.selection.bots,
+			overrideCategoryConfig: this.categoryConfigOverrides
+		};
+
+		for (const [id, ps] of this.activeProcesses) {
+			if (!ps.connected) {
+				this.warn(`Skipping selection sync for disconnected shard ${id}`);
+				continue;
+			}
+			ps.send(message);
+		}
 	}
 
 	private resolveAuthToken(config: StartConfig): string | undefined {
