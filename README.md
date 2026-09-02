@@ -223,7 +223,7 @@ await fnlb.start({
 
 Overrides stay applied even if the category config is updated live.
 
-See **[CATEGORY_CONFIG.md](./CATEGORY_CONFIG.md)** for every supported key and type.
+See **[CATEGORY_CONFIG.md](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md)** for every supported key and type.
 
 ## Name your cluster
 
@@ -291,7 +291,7 @@ Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com
 | `bots` | Bot ID include list |
 | `numberOfShards` | Number of subprocesses (default `1`) |
 | `botsPerShard` | Max bots per shard (default `1`) |
-| `overrideCategoryConfig` | Scoped partial category config for this run - see [CATEGORY_CONFIG.md](./CATEGORY_CONFIG.md) |
+| `overrideCategoryConfig` | Scoped partial category config for this run - see [CATEGORY_CONFIG.md](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md) |
 | `channel` | Release channel for this run |
 | `logLevel` | `'INFO'` or `'DEBUG'` (`LogLevel` enum exported) |
 | `hideUsernames` / `hideEmails` | Redact PII in shard logs |
@@ -299,7 +299,7 @@ Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com
 
 ## Links
 
-- [Category config reference](./CATEGORY_CONFIG.md)
+- [Category config reference](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md)
 - [Website](https://fnlb.net)
 - [Documentation](https://docs.fnlb.net/introduction)
 - [Node.js SDK docs](https://docs.fnlb.net/sdk-node)

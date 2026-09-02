@@ -1,6 +1,6 @@
 # Category config reference
 
-Keys accepted inside `overrideCategoryConfig` on [`start()`](./README.md#override-category-settings-at-start).
+Keys accepted inside `overrideCategoryConfig` on [`start()`](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/README.md#override-category-settings-at-start).
 
 ```ts
 overrideCategoryConfig?: {
