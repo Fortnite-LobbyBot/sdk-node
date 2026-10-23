@@ -11,10 +11,10 @@
 		"bun-plugin-dts": "^0.3.0",
 		"typedoc": "^0.28.20",
 		"typedoc-plugin-markdown": "^4.14.1",
-		"typescript": "^6.0.3"
+		"typescript": "^7.0.0"
 	},
 	"overrides": {
-		"typescript": "^6.0.3"
+		"typescript": "^7.0.0"
 	},
 	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite Lobby bots and getting Bot Lobbies.",
 	"files": [
