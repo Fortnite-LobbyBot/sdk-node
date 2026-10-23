@@ -219,8 +219,7 @@ export type SdkParentMessage = SdkRequestMessage;
 /** @internal */
 export type SdkChildMessage = SdkHelloMessage | SdkResponseMessage | SdkEventMessage;
 
-export const SDK_BRIDGE_UNAVAILABLE =
-	'This FNLB client does not support the SDK bridge. Update FNLB and try again.';
+export const SDK_BRIDGE_UNAVAILABLE = 'This FNLB client does not support the SDK bridge. Update FNLB and try again.';
 
 /** @internal */
 export function isRecord(value: unknown): value is Record<string, unknown> {

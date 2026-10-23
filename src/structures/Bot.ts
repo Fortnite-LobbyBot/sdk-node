@@ -1,4 +1,4 @@
-import type FNLB from '../classes/FNLB';
+import type { FNLB } from '../classes/FNLB';
 import type { Shard } from '../classes/Shard';
 import type { SdkBotSnapshot, SdkCommandResult, SdkPresence } from '../ipc/protocol';
 import { loadout } from './fortniteAction';

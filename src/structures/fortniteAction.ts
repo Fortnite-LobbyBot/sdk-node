@@ -28,9 +28,12 @@ export const loadout = {
 		fortniteAction(bot, 'member.shoes', cosmetic(id, variants, path)),
 	setSidekick: (bot: Bot, id: string, variants?: SdkCosmeticVariant[], path?: string) =>
 		fortniteAction(bot, 'member.sidekick', cosmetic(id, variants, path)),
-	setEmote: (bot: Bot, id: string, path?: string) => fortniteAction(bot, 'member.emote', cosmetic(id, undefined, path)),
-	setEmoji: (bot: Bot, id: string, path?: string) => fortniteAction(bot, 'member.emoji', cosmetic(id, undefined, path)),
-	setTrack: (bot: Bot, id: string, path?: string) => fortniteAction(bot, 'member.track', cosmetic(id, undefined, path)),
+	setEmote: (bot: Bot, id: string, path?: string) =>
+		fortniteAction(bot, 'member.emote', cosmetic(id, undefined, path)),
+	setEmoji: (bot: Bot, id: string, path?: string) =>
+		fortniteAction(bot, 'member.emoji', cosmetic(id, undefined, path)),
+	setTrack: (bot: Bot, id: string, path?: string) =>
+		fortniteAction(bot, 'member.track', cosmetic(id, undefined, path)),
 	clearEmote: (bot: Bot) => fortniteAction(bot, 'member.clearEmote'),
 	clearBackpack: (bot: Bot) => fortniteAction(bot, 'member.clearBackpack'),
 	clearShoes: (bot: Bot) => fortniteAction(bot, 'member.clearShoes'),

@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { resolve as pathResolve } from 'node:path';
 
-import FNLB from '../src/classes/FNLB';
+import { FNLB } from '../src/classes/FNLB';
 import { type LogsMessage, LogsMessageFormat } from '../src/types/LogsMessage';
 import type { StartConfig } from '../src/types/StartConfig';
 import { LogLevel } from '../src/types/StartConfig';
@@ -71,7 +71,7 @@ describe('FNLB', () => {
 
 			const logMessages: LogsMessage[] = [];
 			const fnlb2 = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg)
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg)
 			});
 
 			await fnlb2.update();
@@ -119,7 +119,7 @@ describe('FNLB', () => {
 			const logMessages: LogsMessage[] = [];
 
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg)
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg)
 			});
 
 			const config: StartConfig = { apiToken: apiToken, numberOfShards: 1 };
@@ -267,7 +267,7 @@ describe('FNLB', () => {
 		it('should call onLogMessage when logs are enabled', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg),
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg),
 				disableLogs: false
 			});
 
@@ -284,7 +284,7 @@ describe('FNLB', () => {
 		it('should NOT call onLogMessage when logs are disabled', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg),
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg),
 				disableLogs: true
 			});
 
@@ -298,7 +298,7 @@ describe('FNLB', () => {
 		it('should call onSubProcessLogMessage (if child outputs)', async () => {
 			const subProcessMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onSubProcessLogMessage: (msg) => subProcessMessages.push(msg),
+				onSubProcessLogMessage: (msg: LogsMessage) => subProcessMessages.push(msg),
 				disableSubProcessLogs: false,
 				disableSubProcessErrorLogs: false,
 
@@ -355,7 +355,7 @@ describe('FNLB', () => {
 		it('should respect updateIntervalMs (caching)', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg),
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg),
 				updateIntervalMs: 100_000
 			});
 
@@ -379,7 +379,7 @@ describe('FNLB', () => {
 		it('should invalidate cache if channel changes', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg),
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg),
 				updateIntervalMs: 100_000
 			});
 
@@ -416,7 +416,7 @@ describe('FNLB', () => {
 		it('should force update check when force is true', async () => {
 			const logMessages: LogsMessage[] = [];
 			fnlb = new FNLB({
-				onLogMessage: (msg) => logMessages.push(msg),
+				onLogMessage: (msg: LogsMessage) => logMessages.push(msg),
 				updateIntervalMs: 1_000_000
 			});
 
