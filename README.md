@@ -3,7 +3,7 @@
 Self-host and scale Fortnite lobby bots for Bot Lobbies with the official [FNLB](https://fnlb.net) Node.js / Bun SDK.
 
 > [!IMPORTANT]
-> The full documentation is at [developers.fnlb.net](https://developers.fnlb.net/docs/introduction).
+> The full documentation is at [developers.fnlb.net](https://developers.fnlb.net/docs/sdk/overview).
 >
 > - [SDK Introduction](https://developers.fnlb.net/docs/self-hosting/sdk-node): install, authentication, shards, and shutdown
 > - [SDK guides](https://developers.fnlb.net/docs/sdk/overview): events, parties, cosmetics, chat, and `fnlb.api`
@@ -372,13 +372,12 @@ await fnlb.api.presets.list();
 
 ## Links
 
-- [Developer documentation](https://developers.fnlb.net/docs/introduction)
+- [SDK Documentation](https://developers.fnlb.net/docs/sdk/overview)
 - [Node.js SDK](https://developers.fnlb.net/docs/self-hosting/sdk-node)
-- [SDK guides](https://developers.fnlb.net/docs/sdk/overview)
 - [SDK reference](https://developers.fnlb.net/sdk)
 - [Category config](https://developers.fnlb.net/docs/sdk/category-config)
+- [Developer Documentation](https://developers.fnlb.net/docs)
 - [Website](https://fnlb.net)
-- [Changelog](https://docs.fnlb.net/bots/changelog)
 - [Discord](https://fnlb.net/discord)
 
 [![Join FNLB on Discord](https://discord.com/api/guilds/1106879710744543303/widget.png?style=banner3)](https://fnlb.net/discord)
