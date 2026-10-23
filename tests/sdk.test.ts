@@ -21,7 +21,7 @@ describe('local shard bridge', () => {
 	test('caches bots, emits events, and round-trips commands and party meta', async () => {
 		fnlb = new FNLB({ disableLogs: true, sdkHelloTimeoutMs: 2000 });
 		const messages: Message[] = [];
-		fnlb.on(Events.PartyMemberMessage, (message: Message) => {
+		fnlb.on(Events.PartyMemberMessage, (message) => {
 			messages.push(message);
 		});
 		const ready = new Promise<Bot>((resolveBot, reject) => {

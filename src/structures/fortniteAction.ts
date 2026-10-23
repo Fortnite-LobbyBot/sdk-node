@@ -1,12 +1,12 @@
 import type { FortniteAction, SdkCosmeticVariant, SdkPartyPrivacy, SdkPresence } from '../ipc/protocol';
 import type { Bot } from './Bot';
 
-export async function fortniteAction(
+export async function fortniteAction<T = { ok: true }>(
 	bot: Bot,
 	action: FortniteAction,
 	params: Record<string, unknown> = {}
-): Promise<{ ok: true }> {
-	return await bot.shard.request('fortnite.action', { botId: bot.id, action, ...params });
+): Promise<T> {
+	return await bot.shard.request<T>('fortnite.action', { botId: bot.id, action, ...params });
 }
 
 function cosmetic(id: string, variants?: SdkCosmeticVariant[], path?: string): Record<string, unknown> {
@@ -18,6 +18,10 @@ function cosmetic(id: string, variants?: SdkCosmeticVariant[], path?: string): R
 }
 
 export const loadout = {
+	whisper: (bot: Bot, recipientId: string, content: string) =>
+		fortniteAction(bot, 'chat.send', { channel: 'friend', recipientId, content }),
+	friends: (bot: Bot) => fortniteAction<import('../api/types').ApiFriends>(bot, 'friends.list'),
+	pendingFriends: (bot: Bot) => fortniteAction<import('../api/types').ApiPendingFriends>(bot, 'friends.pending'),
 	setOutfit: (bot: Bot, id: string, variants?: SdkCosmeticVariant[]) =>
 		fortniteAction(bot, 'member.outfit', cosmetic(id, variants)),
 	setBackpack: (bot: Bot, id: string, variants?: SdkCosmeticVariant[], path?: string) =>
@@ -46,6 +50,10 @@ export const loadout = {
 	setLevel: (bot: Bot, level: number) => fortniteAction(bot, 'member.level', { level }),
 	setCosmeticStats: (bot: Bot, crowns: number, ranked: number) =>
 		fortniteAction(bot, 'member.stats', { crowns, ranked }),
+	invite: (bot: Bot, targetId: string) => fortniteAction(bot, 'party.invite', { targetId }),
+	kick: (bot: Bot, targetId: string) => fortniteAction(bot, 'party.kick', { targetId }),
+	promote: (bot: Bot, targetId: string) => fortniteAction(bot, 'party.promote', { targetId }),
+	leave: (bot: Bot, createNew = true) => fortniteAction(bot, 'party.leave', { createNew }),
 	setPrivacy: (bot: Bot, privacy: SdkPartyPrivacy) => fortniteAction(bot, 'party.privacy', { privacy }),
 	setPlaylist: (bot: Bot, playlist: string, region?: string) =>
 		fortniteAction(bot, 'party.playlist', { playlist, ...(region ? { region } : {}) }),
@@ -58,6 +66,8 @@ export const loadout = {
 	requestToJoin: (bot: Bot, targetId: string) => fortniteAction(bot, 'party.joinRequest', { targetId }),
 	addFriend: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.add', { targetId }),
 	removeFriend: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.remove', { targetId }),
+	acceptFriend: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.accept', { targetId }),
+	declineFriend: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.decline', { targetId }),
 	block: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.block', { targetId }),
 	unblock: (bot: Bot, targetId: string) => fortniteAction(bot, 'friends.unblock', { targetId }),
 	setStatus: (bot: Bot, status?: string, onlineType?: SdkPresence) =>

@@ -1,5 +1,5 @@
 /**
- * Names for `fnlb.on` and `fnlb.once`.
+ * Names for `fnlb.on` and `fnlb.once`. Listener argument types are defined on {@link FnlbClientEvents}.
  *
  * Party and friend chat arrive as a {@link Message}. `ready` arrives as a {@link Bot}. Other events arrive as `{ bot, ...fields }`. Full party meta is not included. Call `bot.party.meta.get()` when you need it.
  *

@@ -10,6 +10,7 @@ import { isRecord } from '../ipc/protocol';
 import { BotManager } from '../managers/BotManager';
 import { Collection } from '../structures/Collection';
 import { Message } from '../structures/Message';
+import type { FnlbClientEvents } from '../types/ClientEvents';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
 import type { CategoryConfigOverrides, StartConfig } from '../types/StartConfig';
@@ -159,6 +160,33 @@ export class FNLB extends EventEmitter {
 		this.lastOverrideVersion = normalizedOverrideVersion;
 	}
 
+	public override on<U extends keyof FnlbClientEvents>(event: U, listener: FnlbClientEvents[U]): this {
+		return super.on(event, listener);
+	}
+
+	public override once<U extends keyof FnlbClientEvents>(event: U, listener: FnlbClientEvents[U]): this {
+		return super.once(event, listener);
+	}
+
+	public override off<U extends keyof FnlbClientEvents>(event: U, listener: FnlbClientEvents[U]): this {
+		return super.off(event, listener);
+	}
+
+	public override addListener<U extends keyof FnlbClientEvents>(event: U, listener: FnlbClientEvents[U]): this {
+		return super.addListener(event, listener);
+	}
+
+	public override removeListener<U extends keyof FnlbClientEvents>(event: U, listener: FnlbClientEvents[U]): this {
+		return super.removeListener(event, listener);
+	}
+
+	public override emit<U extends keyof FnlbClientEvents>(
+		event: U,
+		...args: Parameters<FnlbClientEvents[U]>
+	): boolean {
+		return super.emit(event, ...args);
+	}
+
 	/**
 	 * Download the shard runtime if needed, fork the shards, and open the HTTP client with this token.
 	 *
@@ -296,7 +324,7 @@ export class FNLB extends EventEmitter {
 			return;
 		}
 
-		if (event.name === Events.PartyMemberMessage || event.name === Events.FriendMessage) {
+		if (event.name === Events.FriendMessage || event.name === Events.PartyMemberMessage) {
 			const author = isRecord(data['author']) ? data['author'] : {};
 			const message = new Message(
 				bot,
@@ -307,7 +335,8 @@ export class FNLB extends EventEmitter {
 					...(typeof author['displayName'] === 'string' ? { displayName: author['displayName'] } : {})
 				}
 			);
-			this.emit(event.name, message);
+			if (event.name === Events.FriendMessage) this.emit(Events.FriendMessage, message);
+			else this.emit(Events.PartyMemberMessage, message);
 			return;
 		}
 
@@ -317,7 +346,7 @@ export class FNLB extends EventEmitter {
 			return;
 		}
 
-		this.emit(event.name, { bot, ...data });
+		super.emit(event.name, { bot, ...data });
 	}
 
 	/**

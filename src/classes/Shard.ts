@@ -103,7 +103,7 @@ export class Shard {
 	 *
 	 * Throws if the shard never announces the bridge, or if the call takes longer than 30 seconds.
 	 *
-	 * @param method Bridge method, such as `bots.list` or `party.meta.get`.
+	 * @param method Bridge method, such as `bots.list`, `commands.run`, or `fortnite.action`.
 	 * @param params Arguments for that method.
 	 */
 	public async request<T>(method: SdkMethod, params: Record<string, unknown> = {}): Promise<T> {
