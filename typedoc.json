@@ -1,0 +1,15 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"entryPoints": ["src/index.ts"],
+	"excludePrivate": true,
+	"excludeInternal": true,
+	"excludeExternals": true,
+	"skipErrorChecking": true,
+	"readme": "none",
+	"disableSources": true,
+	"plugin": ["typedoc-plugin-markdown"],
+	"json": "../Sonnet/public/sdk.json",
+	"markdown": "../Sonnet/public/sdk-reference",
+	"entryFileName": "index.md",
+	"pretty": true
+}

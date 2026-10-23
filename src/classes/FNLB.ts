@@ -1,10 +1,19 @@
-import { fork } from 'node:child_process';
+import { type ChildProcess, fork } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { resolve as pathResolve } from 'node:path';
 import type { ICategoryConfig } from '@fnlb-project/shared/types';
 import { AutoUpdater, FNLB_RELEASE_PUBLIC_KEYS, FNLB_TRUSTED_DOWNLOAD_ORIGIN } from '@fnlb-project/shared/updater';
+import { RestClient } from '../api/RestClient';
+import { Events } from '../events';
+import type { SdkEventMessage, SdkMethod } from '../ipc/protocol';
+import { isRecord } from '../ipc/protocol';
+import { BotManager } from '../managers/BotManager';
+import { Collection } from '../structures/Collection';
+import { Message } from '../structures/Message';
 import type { FNLBConfig } from '../types/FNLBConfig';
 import { LogsMessageFormat } from '../types/LogsMessage';
 import type { CategoryConfigOverrides, StartConfig } from '../types/StartConfig';
+import { type BroadcastResult, Shard } from './Shard';
 import { Util } from './Util';
 
 const RELEASE_CHANNELS = ['stable', 'beta', 'dev'] as const;
@@ -60,9 +69,37 @@ const omitOverrideKeys = (
 	return Object.keys(next).length > 0 ? next : undefined;
 };
 
-export default class FNLB {
+/**
+ * Self-hosted FNLB client.
+ *
+ * `start()` downloads the FNLB client (shard runtime) and forks one process per shard. Those processes log the bots into Fortnite and push events back over local IPC. Listen with `fnlb.on(Events.PartyMemberMessage, ...)`.
+ *
+ * `fnlb.bots` is the bots running in this process. `fnlb.api` calls `https://api.fnlb.net` for the same account, including bots that are not running here.
+ *
+ * @example
+ * ```ts
+ * import FNLB, { Events } from 'fnlb';
+ *
+ * const fnlb = new FNLB({ clusterName: 'dev' });
+ *
+ * fnlb.on(Events.PartyMemberMessage, async (message) => {
+ *   if (message.content === '!ping') await message.reply('pong');
+ * });
+ *
+ * await fnlb.start({
+ *   token: 'FNLB_...',
+ *   categories: ['category-id']
+ * });
+ * ```
+ */
+export class FNLB extends EventEmitter {
 	private readonly config?: FNLBConfig;
 	private readonly activeProcesses: Map<string, ReturnType<typeof fork>> = new Map();
+	/** Shard processes spawned by `start()`. Each shard runs up to `botsPerShard` bots. */
+	public readonly shards = new Collection<string, Shard>();
+	/** Bots currently running in those shards. Empty until a bot emits {@link Events.Ready}. */
+	public readonly bots: BotManager;
+	private restClient?: RestClient;
 	private readonly packageName = `${process.versions['bun'] ? 'zenith-bun' : 'zenith'}`;
 	private readonly fnlbDir: string;
 	private updater!: AutoUpdater;
@@ -75,8 +112,13 @@ export default class FNLB {
 	private shouldRestart = true;
 	private runId = 0;
 
+	/**
+	 * @param config Cluster name, log callbacks, and where the downloaded shard runtime is stored.
+	 */
 	public constructor(config?: FNLBConfig) {
+		super();
 		this.config = config;
+		this.bots = new BotManager(this);
 		this.fnlbDir = config?.fnlbPath ? pathResolve(config?.fnlbPath, '.fnlb') : pathResolve(process.cwd(), '.fnlb');
 		this.setupUpdater(config?.channel ?? 'stable', config?.overrideVersion);
 	}
@@ -117,6 +159,23 @@ export default class FNLB {
 		this.lastOverrideVersion = normalizedOverrideVersion;
 	}
 
+	/**
+	 * Download the shard runtime if needed, fork the shards, and open the HTTP client with this token.
+	 *
+	 * Calling `start()` again stops the shards from the previous call first.
+	 *
+	 * @param config Token plus which categories or bot ids to run, and how to split them across shards.
+	 * @returns Resolves when every shard process has been spawned. Bots are ready later, on {@link Events.Ready}.
+	 * @example
+	 * ```ts
+	 * await fnlb.start({
+	 *   token: 'FNLB_...',
+	 *   categories: ['category-id'],
+	 *   numberOfShards: 2,
+	 *   botsPerShard: 10
+	 * });
+	 * ```
+	 */
 	public async start(config: StartConfig) {
 		await this.stop();
 		this.shouldRestart = true;
@@ -125,6 +184,10 @@ export default class FNLB {
 
 		const authToken = this.resolveAuthToken(config);
 		if (!authToken) throw new Error('[FNLB ShardingManager] Please provide an auth token.');
+		this.restClient = new RestClient({
+			token: authToken,
+			...(this.config?.apiBaseUrl ? { baseUrl: this.config.apiBaseUrl } : {})
+		});
 
 		const channel = config.channel ?? this.config?.channel ?? 'stable';
 		const overrideVersion = config.overrideVersion ?? this.config?.overrideVersion;
@@ -157,9 +220,116 @@ export default class FNLB {
 		}
 	}
 
+	/**
+	 * HTTP API for the account that called `start()`. Throws if `start()` has not been called.
+	 *
+	 * Use this for bots that are not running in this process. Use `bot.runCommand` for bots in `fnlb.bots`.
+	 */
+	public get api(): RestClient {
+		if (!this.restClient) {
+			throw new Error('[FNLB] Call start() before using the API client.');
+		}
+		return this.restClient;
+	}
+
+	/**
+	 * Send one local IPC call to every running shard. A shard that fails is returned with `ok: false` instead of rejecting the whole call.
+	 *
+	 * @param method Bridge method, such as `bots.list` or `shard.info`.
+	 * @param params Arguments for that method. Bot methods also need `botId`.
+	 */
+	public async broadcast<T>(method: SdkMethod, params: Record<string, unknown> = {}): Promise<BroadcastResult<T>[]> {
+		if (this.shards.size === 0) {
+			throw new Error('[FNLB ShardingManager] No shards are running. Call start() first.');
+		}
+
+		return await Promise.all(
+			[...this.shards.values()].map(async (shard) => {
+				try {
+					const result = await shard.request<T>(method, params);
+					return { shardId: shard.id, ok: true, result };
+				} catch (error) {
+					return {
+						shardId: shard.id,
+						ok: false,
+						error: error instanceof Error ? error.message : String(error)
+					};
+				}
+			})
+		);
+	}
+
+	/**
+	 * Version, gateway connection, and bot count for each shard this client spawned.
+	 */
+	public async fetchShardInfo() {
+		return await this.broadcast<import('../ipc/protocol').SdkShardInfo>('shard.info');
+	}
+
+	/** @internal */
+	public attachShard(id: string, child: ChildProcess): Shard {
+		const existing = this.shards.get(id);
+		existing?.dispose('Shard replaced.');
+
+		const shard = new Shard(this, id, child, this.config?.sdkHelloTimeoutMs ?? 15_000);
+		this.shards.set(id, shard);
+		this.activeProcesses.set(id, child);
+		child.on('message', (message: unknown) => {
+			shard.handleMessage(message);
+		});
+		return shard;
+	}
+
+	/** @internal */
+	public handleShardHello(shard: Shard): void {
+		this.emit(Events.ShardReady, shard);
+	}
+
+	/** @internal */
+	public handleSdkEvent(shard: Shard, event: SdkEventMessage): void {
+		const bot = event.bot ? this.bots.upsert(shard, event.bot) : this.bots.placeholder(shard, event.botId);
+		const data = isRecord(event.data) ? event.data : {};
+
+		if (event.name === Events.Ready) {
+			bot.ready = true;
+			this.emit(Events.Ready, bot);
+			return;
+		}
+
+		if (event.name === Events.PartyMemberMessage || event.name === Events.FriendMessage) {
+			const author = isRecord(data['author']) ? data['author'] : {};
+			const message = new Message(
+				bot,
+				event.name === Events.FriendMessage ? 'friend' : 'party',
+				typeof data['content'] === 'string' ? data['content'] : '',
+				{
+					id: typeof author['id'] === 'string' ? author['id'] : '',
+					...(typeof author['displayName'] === 'string' ? { displayName: author['displayName'] } : {})
+				}
+			);
+			this.emit(event.name, message);
+			return;
+		}
+
+		if (event.name === Events.Disconnected) {
+			bot.ready = false;
+			this.emit(Events.Disconnected, { bot, isLogout: data['isLogout'] === true });
+			return;
+		}
+
+		this.emit(event.name, { bot, ...data });
+	}
+
+	/**
+	 * Stop every shard this client started and clear `fnlb.bots`. The HTTP client stays usable.
+	 */
 	public async stop() {
 		this.shouldRestart = false;
 		this.runId++;
+
+		for (const shard of this.shards.values()) shard.dispose('Shard stopped.');
+		this.shards.clear();
+		this.bots.clear();
 
 		if (this.activeProcesses.size === 0) return;
 
@@ -175,14 +345,26 @@ export default class FNLB {
 		this.log('All shards stopped.');
 	}
 
+	/**
+	 * Category ids the running shards may use. `undefined` means every category on the account.
+	 */
 	public getCategories(): string[] | undefined {
 		return this.selection.categories ? [...this.selection.categories] : undefined;
 	}
 
+	/**
+	 * Bot ids the running shards may use. `undefined` means bots are not filtered by id.
+	 */
 	public getBots(): string[] | undefined {
 		return this.selection.bots ? [...this.selection.bots] : undefined;
 	}
 
+	/**
+	 * Add category ids to the running include list without restarting shards. Bots that no longer match are stopped and replaced from the new pool.
+	 *
+	 * @param ids Category ids from the bot page or `api.categories.list()`.
+	 * @param override Category settings applied only to these ids for this process.
+	 */
 	public addCategories(ids: string[], override?: Partial<ICategoryConfig>) {
 		this.assertRunning();
 		const toAdd = normalizeIds(ids);
@@ -203,6 +385,11 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/**
+	 * Remove category ids from the running include list. Removing the last id makes categories unrestricted again.
+	 *
+	 * @param ids Category ids to drop.
+	 */
 	public removeCategories(ids: string[]) {
 		this.assertRunning();
 		if (!this.selection.categories) return;
@@ -229,6 +416,12 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/**
+	 * Replace the category include list. Omit `ids` to allow every category on the account.
+	 *
+	 * @param ids Category ids to keep, or omit to clear the filter.
+	 * @param override Category settings applied to every id in the new list.
+	 */
 	public setCategories(ids?: string[], override?: Partial<ICategoryConfig>) {
 		this.assertRunning();
 		const next = ids?.length ? normalizeIds(ids) : undefined;
@@ -263,6 +456,12 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/**
+	 * Add bot ids to the running include list. The gateway still assigns each id to only one shard.
+	 *
+	 * @param ids Bot ids from the bot page or `api.bots.list()`.
+	 * @param override Category settings applied only to these bots for this process.
+	 */
 	public addBots(ids: string[], override?: Partial<ICategoryConfig>) {
 		this.assertRunning();
 		const toAdd = normalizeIds(ids);
@@ -281,6 +480,11 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/**
+	 * Remove bot ids from the running include list. Removing the last id clears the bot filter.
+	 *
+	 * @param ids Bot ids to drop.
+	 */
 	public removeBots(ids: string[]) {
 		this.assertRunning();
 		if (!this.selection.bots) return;
@@ -307,6 +511,12 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/**
+	 * Replace the bot include list. Omit `ids` to stop filtering by bot id.
+	 *
+	 * @param ids Bot ids to keep, or omit to clear the filter.
+	 * @param override Category settings applied to every id in the new list.
+	 */
 	public setBots(ids?: string[], override?: Partial<ICategoryConfig>) {
 		this.assertRunning();
 		const next = ids?.length ? normalizeIds(ids) : undefined;
@@ -339,6 +549,7 @@ export default class FNLB {
 		this.broadcastSelection();
 	}
 
+	/** @internal */
 	public async startShard(config: StartConfig, id: string, currentRunId: number, authToken?: string) {
 		const resolvedAuthToken = authToken ?? this.resolveAuthToken(config);
 		if (!resolvedAuthToken || resolvedAuthToken.length < 10) {
@@ -376,7 +587,8 @@ export default class FNLB {
 						.replaceAll(' ', '-') ?? 'unknown',
 				CLUSTER_NAME: this.config?.clusterName?.trim(),
 				FNLB_DIR: this.fnlbDir,
-				...config.extraEnv
+				...config.extraEnv,
+				SDK_BRIDGE: '1'
 			},
 			stdio: ['inherit', 'pipe', 'pipe', 'ipc']
 		});
@@ -403,7 +615,11 @@ export default class FNLB {
 				});
 			});
 
+		const shard = this.attachShard(id, ps);
+
 		ps.on('close', async (code) => {
+			shard.dispose('Shard stopped.');
+			this.shards.delete(id);
 			this.activeProcesses.delete(id);
 			if (this.shouldRestart && currentRunId === this.runId) {
 				if (code === 0) {
@@ -427,6 +643,11 @@ export default class FNLB {
 		return ps;
 	}
 
+	/**
+	 * Download a newer shard runtime if the current channel has one. `start()` already does this.
+	 *
+	 * @param force Check even if the last check was recent.
+	 */
 	public async update(force?: true) {
 		await this.updater.ensureUpToDate(force);
 	}
