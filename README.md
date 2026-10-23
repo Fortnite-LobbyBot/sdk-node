@@ -2,6 +2,14 @@
 
 Self-host and scale Fortnite lobby bots for Bot Lobbies with the official [FNLB](https://fnlb.net) Node.js / Bun SDK.
 
+> [!IMPORTANT]
+> The full documentation is at [developers.fnlb.net](https://developers.fnlb.net/docs/introduction).
+>
+> - [SDK Introduction](https://developers.fnlb.net/docs/self-hosting/sdk-node): install, authentication, shards, and shutdown
+> - [SDK guides](https://developers.fnlb.net/docs/sdk/overview): events, parties, cosmetics, chat, and `fnlb.api`
+> - [SDK reference](https://developers.fnlb.net/sdk): every class and method
+> - [Category config](https://developers.fnlb.net/docs/sdk/category-config): every `overrideCategoryConfig` key
+
 ```bash
 npm install fnlb@latest
 # or
@@ -38,7 +46,7 @@ await fnlb.stop();
 | Credential | Prefix | Where to get it |
 | --- | --- | --- |
 | API token | `FNLB_…` | [app.fnlb.net/account](https://app.fnlb.net/account) |
-| OAuth2 access token | `FNLBOA2AT_…` | Needs `bots.run`, `categories.read`, and `bots.read` (see [OAuth2 docs](https://developer-docs.fnlb.net/oauth2)) |
+| OAuth2 access token | `FNLBOA2AT_…` | Needs `bots.run`, `categories.read`, and `bots.read` (see [OAuth2 docs](https://developers.fnlb.net/docs/getting-started/oauth2)) |
 
 ```ts
 await fnlb.start({
@@ -223,7 +231,7 @@ await fnlb.start({
 
 Overrides stay applied even if the category config is updated live.
 
-See **[CATEGORY_CONFIG.md](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md)** for every supported key and type.
+See the [category config reference](https://developers.fnlb.net/docs/sdk/category-config) for every supported key and type. How overrides are applied is in the [Node.js SDK guide](https://developers.fnlb.net/docs/self-hosting/sdk-node#override-category-settings-at-start).
 
 ## Name your cluster
 
@@ -265,7 +273,70 @@ await startFNLB();
 setInterval(restartFNLB, 3_600_000); // every hour
 ```
 
-Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com/Fortnite-LobbyBot/Self-Hosted) template.
+Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com/Fortnite-LobbyBot/Self-Hosted) template, or the [self-hosting guide](https://developers.fnlb.net/docs/self-hosting/overview).
+
+## Listen for events
+
+`FNLB` is an event emitter. Shard processes push live bot events over local IPC, and the client emits them in the parent process. Event names, party actions, and cosmetics are covered in the [SDK guides](https://developers.fnlb.net/docs/sdk/overview).
+
+```ts
+import FNLB, { Events } from 'fnlb';
+
+const fnlb = new FNLB({ clusterName: 'dev' });
+
+fnlb.on(Events.Ready, (bot) => {
+  console.log(bot.displayName, 'is in party', bot.party.id);
+});
+
+fnlb.on(Events.PartyMemberMessage, async (message) => {
+  if (message.content === '!ping') await message.reply('pong');
+});
+
+await fnlb.start({
+  token: 'your-api-token',
+  categories: ['your-category-id']
+});
+```
+
+`fnlb.bots.cache` holds the bots running in this process. `bot.fetch()` refreshes one bot from its shard. `fnlb.bots.fetchAll()` asks every shard.
+
+```ts
+const bot = fnlb.bots.cache.get('bot-id') ?? (await fnlb.bots.fetch('bot-id'));
+
+await bot.party.meta.get();
+await bot.party.meta.set('Default:CustomMatchKey_s', 'my-key');
+await bot.party.meta.get('Default:CustomMatchKey_s');
+
+await bot.runCommand('outfit', ['renegade']);
+await bot.party.invite('friend-epic-id');
+await bot.party.kick('member-epic-id');
+await bot.send('hello party');
+```
+
+Party meta `get()` with no key returns the parsed schema. `j` keys are objects, `b` keys are booleans, and `U` keys are numbers. `set()` writes one key and sends that patch. Member meta is `bot.party.me.meta` or `member.meta`.
+
+Other local calls include `bot.friends()`, `bot.pendingFriends()`, `bot.acceptFriend(id)`, `bot.declineFriend(id)`, `bot.whisper(id, content)`, `party.promote`, `party.leave`, and `party.fetchMembers()`. `fnlb.fetchShardInfo()` returns version, gateway state, and bot count for each shard. `fnlb.broadcast(method, params)` sends one bridge call to every shard.
+
+Privacy, playlists, cosmetics, friend add/remove, and presence use the same local bridge. See [Bots and parties](https://developers.fnlb.net/docs/sdk/parties) and [Chat and commands](https://developers.fnlb.net/docs/sdk/chat-and-commands).
+
+These calls need a FNLB build that speaks the SDK bridge. Older downloaded builds throw a clear error. The REST client still works.
+
+## Call the HTTP API
+
+`fnlb.api` uses the same token passed to `start()` and calls `https://api.fnlb.net/v1`. Set `apiBaseUrl` on the constructor to point somewhere else. OAuth tokens still need the scope each route requires. Route details are in the [HTTP client guide](https://developers.fnlb.net/docs/sdk/http-client).
+
+```ts
+const accountBots = await fnlb.api.bots.list();
+const me = await fnlb.api.user.get({ includeEmail: true });
+const categories = await fnlb.api.categories.list();
+
+await fnlb.api.bots.commands.run('bot-id', { command: 'outfit', args: ['renegade'] });
+await fnlb.api.bots.chat.send('bot-id', { content: 'hello' });
+await fnlb.api.bots.friends.list('bot-id');
+await fnlb.api.presets.list();
+```
+
+`bot.runCommand` runs on the local shard. `fnlb.api.bots.commands.run` runs through the cloud API, including for bots this process did not start.
 
 ## Options reference
 
@@ -281,6 +352,8 @@ Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com
 | `onLogMessage` / `onSubProcessLogMessage` | Log callbacks |
 | `disableLogs` / `disableErrorLogs` | Mute SDK logs |
 | `disableSubProcessLogs` / `disableSubProcessErrorLogs` | Mute shard stdout/stderr mirroring |
+| `apiBaseUrl` | REST API origin (default `https://api.fnlb.net/v1`) |
+| `sdkHelloTimeoutMs` | How long to wait for a shard to announce the local bridge |
 
 ### `start()` (`StartConfig`)
 
@@ -291,7 +364,7 @@ Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com
 | `bots` | Bot ID include list |
 | `numberOfShards` | Number of subprocesses (default `1`) |
 | `botsPerShard` | Max bots per shard (default `1`) |
-| `overrideCategoryConfig` | Scoped partial category config for this run - see [CATEGORY_CONFIG.md](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md) |
+| `overrideCategoryConfig` | Scoped partial category config for this run. Keys are in the [category config reference](https://developers.fnlb.net/docs/sdk/category-config). |
 | `channel` | Release channel for this run |
 | `logLevel` | `'INFO'` or `'DEBUG'` (`LogLevel` enum exported) |
 | `hideUsernames` / `hideEmails` | Redact PII in shard logs |
@@ -299,10 +372,12 @@ Prefer a ready-made env-based launcher? Use the [Self-Hosted](https://github.com
 
 ## Links
 
-- [Category config reference](https://github.com/Fortnite-LobbyBot/sdk-node/blob/stable/CATEGORY_CONFIG.md)
+- [Developer documentation](https://developers.fnlb.net/docs/introduction)
+- [Node.js SDK](https://developers.fnlb.net/docs/self-hosting/sdk-node)
+- [SDK guides](https://developers.fnlb.net/docs/sdk/overview)
+- [SDK reference](https://developers.fnlb.net/sdk)
+- [Category config](https://developers.fnlb.net/docs/sdk/category-config)
 - [Website](https://fnlb.net)
-- [Documentation](https://docs.fnlb.net/introduction)
-- [Node.js SDK docs](https://docs.fnlb.net/sdk-node)
 - [Changelog](https://docs.fnlb.net/bots/changelog)
 - [Discord](https://fnlb.net/discord)
 
