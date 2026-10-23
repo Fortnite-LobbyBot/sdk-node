@@ -1,9 +1,9 @@
 {
 	"name": "fnlb",
-	"version": "1.1.23",
+	"version": "1.1.24",
 	"author": "FNLB",
 	"main": "dist/index.js",
-	"homepage": "https://developers.fnlb.net/docs/self-hosting/sdk-node",
+	"homepage": "https://developers.fnlb.net/docs/sdk/overview",
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.11",
 		"@types/bun": "^1.4.0",
@@ -16,7 +16,7 @@
 	"overrides": {
 		"typescript": "^6.0.3"
 	},
-	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite bots.",
+	"description": "Easily run your own bot using FNLB, a powerful and scalable system for managing Fortnite Lobby bots and getting Bot Lobbies.",
 	"files": [
 		"dist"
 	],
