@@ -1,30 +1,19 @@
 export const SDK_PROTOCOL_VERSION = 1;
 
-export const SDK_METHODS = [
-	'shard.info',
-	'bots.list',
-	'bots.get',
-	'commands.run',
+export const SDK_METHODS = ['shard.info', 'bots.list', 'bots.get', 'commands.run', 'fortnite.action'] as const;
+
+/** Named calls on the live Fortnite client. `bot.party`, `bot.party.me`, and `bot` helpers send one of these through `fortnite.action`. */
+export const FORTNITE_ACTIONS = [
 	'party.meta.get',
 	'party.meta.set',
 	'party.members',
+	'chat.send',
+	'friends.list',
+	'friends.pending',
 	'party.invite',
 	'party.kick',
 	'party.promote',
 	'party.leave',
-	'chat.send',
-	'friends.list',
-	'friends.pending',
-	'friends.accept',
-	'friends.decline',
-	'fortnite.action'
-] as const;
-
-/**
- * Named calls on the live Fortnite client. `bot.party`, `bot.party.me`, and `bot` methods send one of these.
- * Named calls on the live Fortnite client used by `bot.party` and `bot` helpers.
- */
-export const FORTNITE_ACTIONS = [
 	'party.privacy',
 	'party.playlist',
 	'party.matchKey',
@@ -53,6 +42,8 @@ export const FORTNITE_ACTIONS = [
 	'member.stats',
 	'friends.add',
 	'friends.remove',
+	'friends.accept',
+	'friends.decline',
 	'friends.block',
 	'friends.unblock',
 	'presence.set'
@@ -106,7 +97,7 @@ export type SdkMethod = (typeof SDK_METHODS)[number];
 /** `party` for party schema, `member` for one member's schema. */
 export type SdkMetaScope = 'party' | 'member';
 
-/** Where `chat.send` delivers a message. */
+/** Where the `chat.send` Fortnite action delivers a message. */
 export type SdkChatChannel = 'party' | 'friend';
 
 /** A party member summary. Cosmetic ids only. The meta schema is not included. */
@@ -219,8 +210,7 @@ export type SdkParentMessage = SdkRequestMessage;
 /** @internal */
 export type SdkChildMessage = SdkHelloMessage | SdkResponseMessage | SdkEventMessage;
 
-export const SDK_BRIDGE_UNAVAILABLE =
-	'This FNLB client does not support the SDK bridge. Update FNLB and try again.';
+export const SDK_BRIDGE_UNAVAILABLE = 'This FNLB client does not support the SDK bridge. Update FNLB and try again.';
 
 /** @internal */
 export function isRecord(value: unknown): value is Record<string, unknown> {

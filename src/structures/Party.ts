@@ -1,7 +1,7 @@
 import type { SdkCosmeticVariant, SdkPartyMember, SdkPartyPrivacy, SdkPartySnapshot } from '../ipc/protocol';
 import type { Bot } from './Bot';
 import { Collection } from './Collection';
-import { loadout } from './fortniteAction';
+import { fortniteAction, loadout } from './fortniteAction';
 import { PartyMember } from './PartyMember';
 import { PartyMeta } from './PartyMeta';
 
@@ -49,7 +49,7 @@ export class Party {
 	 * Reload members from the shard and replace `party.members`.
 	 */
 	public async fetchMembers(): Promise<Collection<string, PartyMember>> {
-		const members = await this.bot.shard.request<SdkPartyMember[]>('party.members', { botId: this.bot.id });
+		const members = await fortniteAction<SdkPartyMember[]>(this.bot, 'party.members');
 		this.members.clear();
 		for (const member of members) this.members.set(member.id, new PartyMember(this, member));
 		return this.members;
@@ -61,11 +61,7 @@ export class Party {
 	 * @param content Text to send.
 	 */
 	public async send(content: string): Promise<{ ok: true }> {
-		return await this.bot.shard.request('chat.send', {
-			botId: this.bot.id,
-			channel: 'party',
-			content
-		});
+		return await fortniteAction(this.bot, 'chat.send', { channel: 'party', content });
 	}
 
 	/**
@@ -74,7 +70,7 @@ export class Party {
 	 * @param targetId Epic account id or display name.
 	 */
 	public async invite(targetId: string): Promise<{ ok: true }> {
-		return await this.action('party.invite', targetId);
+		return await loadout.invite(this.bot, targetId);
 	}
 
 	/**
@@ -83,7 +79,7 @@ export class Party {
 	 * @param targetId Epic account id or display name.
 	 */
 	public async kick(targetId: string): Promise<{ ok: true }> {
-		return await this.action('party.kick', targetId);
+		return await loadout.kick(this.bot, targetId);
 	}
 
 	/**
@@ -92,7 +88,7 @@ export class Party {
 	 * @param targetId Epic account id or display name.
 	 */
 	public async promote(targetId: string): Promise<{ ok: true }> {
-		return await this.action('party.promote', targetId);
+		return await loadout.promote(this.bot, targetId);
 	}
 
 	/**
@@ -101,10 +97,7 @@ export class Party {
 	 * @param createNew When false, the bot stays without a party.
 	 */
 	public async leave(createNew = true): Promise<{ ok: true }> {
-		return await this.bot.shard.request('party.leave', {
-			botId: this.bot.id,
-			createNew
-		});
+		return await loadout.leave(this.bot, createNew);
 	}
 
 	/**
@@ -287,12 +280,5 @@ export class Party {
 	 */
 	public async setCosmeticStats(crowns: number, ranked: number): Promise<{ ok: true }> {
 		return await loadout.setCosmeticStats(this.bot, crowns, ranked);
-	}
-
-	private async action(
-		method: 'party.invite' | 'party.kick' | 'party.promote',
-		targetId: string
-	): Promise<{ ok: true }> {
-		return await this.bot.shard.request(method, { botId: this.bot.id, targetId });
 	}
 }

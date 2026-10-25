@@ -5,7 +5,7 @@
     "": {
       "name": "fnlb",
       "dependencies": {
-        "@fnlb-project/shared": "^1.5.171",
+        "@fnlb-project/shared": "^1.5.179",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
@@ -43,7 +43,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.11", "", { "os": "win32", "cpu": "x64" }, "sha512-QSQr/KjOgXA7OzXJUWS+oguKyAZ3Q0l/lnlDGbu397eKo83atuWUjBPJrsqbKNF6CARGw8XXJLGzpHC8Ryhd4Q=="],
 
-    "@fnlb-project/shared": ["@fnlb-project/shared@1.5.171", "", { "dependencies": { "jose": "^6.2.8" } }, "sha512-QfCz2iXOiVpM82Gx2SEhlSEEz+dRaX1BnmASEBCAjto0qOsNCdNeWsOoiM+bCx7x0h+Nv8hcnA2AwcWZHJx2Kw=="],
+    "@fnlb-project/shared": ["@fnlb-project/shared@1.5.179", "", { "dependencies": { "jose": "^6.2.8" } }, "sha512-Qd2suJxZJtbZ2eeyRu1NOvntjyp6frQ442bsDjzQ+azrJadjgT2w9V+cEdWO9VPK0AjgSzqvGOmsIaMxBEgUzw=="],
 
     "@gerrit0/mini-shiki": ["@gerrit0/mini-shiki@3.23.0", "", { "dependencies": { "@shikijs/engine-oniguruma": "^3.23.0", "@shikijs/langs": "^3.23.0", "@shikijs/themes": "^3.23.0", "@shikijs/types": "^3.23.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg=="],
 

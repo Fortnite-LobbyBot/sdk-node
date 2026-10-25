@@ -1,5 +1,6 @@
 import type { SdkMetaScope } from '../ipc/protocol';
 import type { Bot } from './Bot';
+import { fortniteAction } from './fortniteAction';
 
 /**
  * Party schema or one member's schema.
@@ -28,7 +29,7 @@ export class PartyMeta {
 	 * @returns The parsed value. Objects for `j` keys, booleans for `b`, numbers for `U`.
 	 */
 	public async get(key?: string): Promise<unknown> {
-		return await this.bot.shard.request('party.meta.get', this.params(key));
+		return await fortniteAction(this.bot, 'party.meta.get', this.params(key));
 	}
 
 	/**
@@ -39,7 +40,7 @@ export class PartyMeta {
 	 * @returns The parsed value after the write.
 	 */
 	public async set(key: string, value: unknown): Promise<unknown> {
-		return await this.bot.shard.request('party.meta.set', {
+		return await fortniteAction(this.bot, 'party.meta.set', {
 			...this.params(),
 			key,
 			value
@@ -48,7 +49,6 @@ export class PartyMeta {
 
 	private params(key?: string): Record<string, unknown> {
 		return {
-			botId: this.bot.id,
 			scope: this.scope,
 			...(this.memberId ? { memberId: this.memberId } : {}),
 			...(key ? { key } : {})

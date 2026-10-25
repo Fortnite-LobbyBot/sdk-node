@@ -7,6 +7,7 @@ export { Shard } from './classes/Shard';
 export { Events } from './events';
 export type * from './ipc/protocol';
 export {
+	FORTNITE_ACTIONS,
 	PartyPrivacy,
 	Playlist,
 	PresenceOnlineType,
@@ -21,6 +22,19 @@ export { Message } from './structures/Message';
 export { Party } from './structures/Party';
 export { PartyMember } from './structures/PartyMember';
 export { PartyMeta } from './structures/PartyMeta';
+export type {
+	FnlbBotEvent,
+	FnlbClientEvents,
+	FnlbDisconnectedEvent,
+	FnlbEventName,
+	FnlbFriendPresenceEvent,
+	FnlbFriendUserEvent,
+	FnlbPartyInviteEvent,
+	FnlbPartyMemberEvent,
+	FnlbPartyMemberValueEvent,
+	FnlbPartyUpdateEvent,
+	FnlbUserRef
+} from './types/ClientEvents';
 export * from './types/FNLBConfig';
 export * from './types/LogsMessage';
 export * from './types/StartConfig';

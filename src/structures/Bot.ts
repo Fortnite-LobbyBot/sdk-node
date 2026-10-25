@@ -1,4 +1,4 @@
-import type FNLB from '../classes/FNLB';
+import type { FNLB } from '../classes/FNLB';
 import type { Shard } from '../classes/Shard';
 import type { SdkBotSnapshot, SdkCommandResult, SdkPresence } from '../ipc/protocol';
 import { loadout } from './fortniteAction';
@@ -118,12 +118,7 @@ export class Bot {
 	 * @param content Text to send.
 	 */
 	public async whisper(recipientId: string, content: string): Promise<{ ok: true }> {
-		return await this.shard.request('chat.send', {
-			botId: this.id,
-			channel: 'friend',
-			recipientId,
-			content
-		});
+		return await loadout.whisper(this, recipientId, content);
 	}
 
 	/**
@@ -132,14 +127,12 @@ export class Bot {
 	 * Online entries include `isJoinable` and the current status text.
 	 */
 	public async friends() {
-		return await this.shard.request<import('../api/types').ApiFriends>('friends.list', { botId: this.id });
+		return await loadout.friends(this);
 	}
 
 	/** Incoming and outgoing Epic friend requests. */
 	public async pendingFriends() {
-		return await this.shard.request<import('../api/types').ApiPendingFriends>('friends.pending', {
-			botId: this.id
-		});
+		return await loadout.pendingFriends(this);
 	}
 
 	/**
@@ -148,7 +141,7 @@ export class Bot {
 	 * @param targetId Epic account id from `pendingFriends()`.
 	 */
 	public async acceptFriend(targetId: string): Promise<{ ok: true }> {
-		return await this.shard.request('friends.accept', { botId: this.id, targetId });
+		return await loadout.acceptFriend(this, targetId);
 	}
 
 	/**
@@ -157,7 +150,7 @@ export class Bot {
 	 * @param targetId Epic account id from `pendingFriends()`.
 	 */
 	public async declineFriend(targetId: string): Promise<{ ok: true }> {
-		return await this.shard.request('friends.decline', { botId: this.id, targetId });
+		return await loadout.declineFriend(this, targetId);
 	}
 
 	/**

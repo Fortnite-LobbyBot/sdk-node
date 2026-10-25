@@ -46,28 +46,30 @@ process.on('message', (message) => {
 		return;
 	}
 
-	if (method === 'party.meta.get') {
-		process.send({
-			type: 'sdk:response',
-			id,
-			ok: true,
-			result: params.key ? 'my-key' : { 'Default:CustomMatchKey_s': 'my-key' }
-		});
-		return;
-	}
-
-	if (method === 'party.meta.set') {
-		process.send({ type: 'sdk:response', id, ok: true, result: params.value });
-		return;
-	}
-
-	if (method === 'chat.send') {
-		process.send({ type: 'sdk:response', id, ok: true, result: { ok: true } });
-		return;
-	}
-
 	if (method === 'fortnite.action') {
 		calls.push(params);
+		const { action } = params;
+		if (action === 'party.meta.get') {
+			process.send({
+				type: 'sdk:response',
+				id,
+				ok: true,
+				result: params.key ? 'my-key' : { 'Default:CustomMatchKey_s': 'my-key' }
+			});
+			return;
+		}
+		if (action === 'party.meta.set') {
+			process.send({ type: 'sdk:response', id, ok: true, result: params.value });
+			return;
+		}
+		if (action === 'party.members') {
+			process.send({ type: 'sdk:response', id, ok: true, result: bot.party.members });
+			return;
+		}
+		if (action === 'chat.send') {
+			process.send({ type: 'sdk:response', id, ok: true, result: { ok: true } });
+			return;
+		}
 		process.send({ type: 'sdk:response', id, ok: true, result: { ok: true } });
 		return;
 	}
