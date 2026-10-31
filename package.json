@@ -28,7 +28,7 @@
 		"botlobbies"
 	],
 	"license": "ISC",
-	"packageManager": "bun@1.1.17",
+	"packageManager": "bun@1.4.4",
 	"scripts": {
 		"build": "bun run src/build.ts",
 		"prepublishOnly": "bun run lint && bun run build --env=disable",
